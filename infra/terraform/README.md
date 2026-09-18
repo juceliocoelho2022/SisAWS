@@ -109,3 +109,26 @@ Then configure these GitHub Repository Variables:
 - `SISAWS_AWS_DEPLOY_ENABLED` = `true`.
 
 The deployment job runs only on pushes to `main`, after backend, frontend and Terraform CI jobs succeed. It builds the backend image, publishes both the commit SHA and `latest` tags to ECR, forces a new ECS deployment and waits for the service to become stable.
+
+
+## Monitoring and cost guardrails
+
+Terraform creates CloudWatch alarms for:
+
+- ECS service CPU utilization;
+- ECS service memory utilization;
+- ALB unhealthy targets;
+- RDS CPU utilization;
+- RDS free storage.
+
+The default development thresholds are intentionally conservative and can be adjusted in `terraform.tfvars`.
+
+A monthly AWS Cost Budget is also created. The development default is USD 25. AWS Budgets is an alerting mechanism and does not stop resources or cap charges.
+
+To receive notifications, set an email address only in your local `terraform.tfvars`:
+
+```hcl
+alert_email = "your-email@example.com"
+```
+
+When configured, Terraform creates an SNS email subscription for CloudWatch alarms and budget notifications at 80% actual, 100% actual, and 100% forecasted spend. Confirm the SNS subscription from the AWS email before relying on CloudWatch email alerts.
