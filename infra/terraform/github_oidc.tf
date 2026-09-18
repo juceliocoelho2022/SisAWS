@@ -4,6 +4,18 @@ variable "github_repository" {
   default     = "juceliocoelho2022/SisAWS"
 }
 
+variable "github_repository_owner_id" {
+  description = "Immutable GitHub owner ID used in the OIDC subject claim."
+  type        = string
+  default     = "104524218"
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID used in the OIDC subject claim."
+  type        = string
+  default     = "1375719728"
+}
+
 variable "github_branch" {
   description = "GitHub branch allowed to deploy to AWS."
   type        = string
@@ -25,8 +37,11 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  github_oidc_provider_arn = trimspace(var.github_oidc_provider_arn) != "" ? var.github_oidc_provider_arn : aws_iam_openid_connect_provider.github[0].arn
-  github_oidc_subject      = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+  github_repository_parts    = split("/", var.github_repository)
+  github_repository_owner    = local.github_repository_parts[0]
+  github_repository_name     = local.github_repository_parts[1]
+  github_oidc_provider_arn   = trimspace(var.github_oidc_provider_arn) != "" ? var.github_oidc_provider_arn : aws_iam_openid_connect_provider.github[0].arn
+  github_oidc_subject        = "repo:${local.github_repository_owner}@${var.github_repository_owner_id}/${local.github_repository_name}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
 }
 
 resource "aws_iam_role" "github_deploy" {
