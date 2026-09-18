@@ -29,3 +29,5 @@ sisaws:
     jwt:
       secret: ${SISAWS_JWT_SECRET:U2lzQVdTLWRldi1qd3Qtc2VjcmV0LWtleS0yMDI2LXNlZ3VyYS1sb2NhbA==}
       expiration-minutes: ${SISAWS_JWT_EXPIRATION_MINUTES:480}
+  cors:
+    allowed-origins: ${SISAWS_CORS_ALLOWED_ORIGINS:http://localhost:5173}
