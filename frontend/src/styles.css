@@ -369,3 +369,54 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
   .quiz-top{flex-direction:column}
   .quiz-meta{justify-content:flex-start}
 }
+
+
+/* v1.5 - Adaptive learning and smart review */
+.adaptive-page{height:100%;display:flex;min-height:0}
+.adaptive-shell{width:min(100%,1180px);height:100%;min-height:0;margin:0 auto;border:1px solid var(--border);border-radius:20px;background:var(--surface);box-shadow:var(--shadow);padding:24px;overflow-y:auto;scrollbar-width:thin}
+.adaptive-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.adaptive-hero h2{margin:6px 0 8px;font-size:clamp(25px,3vw,38px)}
+.adaptive-hero p:last-child{max-width:760px;color:var(--text-muted);line-height:1.55;margin:0}
+.adaptive-level{min-width:170px;border:1px solid var(--border);background:var(--surface-strong);padding:15px 17px;border-radius:15px}
+.adaptive-level span{display:block;color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.adaptive-level strong{font-size:18px}
+
+.adaptive-next{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;margin:20px 0;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));background:color-mix(in srgb,var(--accent) 7%,var(--surface-strong));border-radius:17px;padding:18px}
+.adaptive-next-icon{width:50px;height:50px;display:grid;place-items:center;border-radius:14px;background:var(--accent);color:var(--accent-text)}
+.adaptive-next-copy h3{margin:5px 0 6px;font-size:21px}
+.adaptive-next-copy p{color:var(--text-muted);line-height:1.45;margin:0}
+.adaptive-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.adaptive-tags span{border:1px solid var(--border-strong);background:var(--surface);color:var(--text-muted);padding:6px 8px;border-radius:999px;font-size:10px;font-weight:700}
+.adaptive-start{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:11px;padding:11px 14px;cursor:pointer;white-space:nowrap}
+
+.adaptive-ranking-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:22px 0 12px}
+.adaptive-ranking-heading h3{margin:5px 0 0}
+.adaptive-ranking-heading small{color:var(--text-muted)}
+.adaptive-ranking{display:grid;gap:10px}
+.adaptive-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid var(--border);background:var(--surface-strong);border-radius:14px;padding:14px}
+.adaptive-rank{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--surface-soft);border:1px solid var(--border-strong);font-weight:900;color:var(--accent)}
+.adaptive-service{min-width:0}
+.adaptive-service-top{display:flex;justify-content:space-between;gap:15px;align-items:center}
+.adaptive-service-top span{font-size:11px;color:var(--text-muted);font-weight:800}
+.adaptive-priority-track{height:8px;margin:8px 0;background:var(--surface);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+.adaptive-priority-track span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--danger));border-radius:999px}
+.adaptive-service p{color:var(--text-muted);font-size:12px;line-height:1.45;margin:0}
+.adaptive-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.adaptive-stats span{font-size:10px;color:var(--text-muted)}
+.adaptive-shortcut{white-space:nowrap}
+
+@media(max-width:900px){
+  .adaptive-page{height:auto;display:block}
+  .adaptive-shell{height:auto;overflow:visible}
+  .adaptive-next{grid-template-columns:auto 1fr}
+  .adaptive-start{grid-column:1/-1;justify-content:center}
+  .adaptive-row{grid-template-columns:42px minmax(0,1fr)}
+  .adaptive-row>.secondary{grid-column:2}
+}
+@media(max-width:620px){
+  .adaptive-hero,.adaptive-next,.adaptive-row{grid-template-columns:1fr}
+  .adaptive-level{width:100%}
+  .adaptive-ranking-heading,.adaptive-service-top{flex-direction:column;align-items:flex-start}
+  .adaptive-rank{width:34px;height:34px}
+  .adaptive-row>.secondary{grid-column:auto}
+}

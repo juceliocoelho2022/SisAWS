@@ -83,6 +83,30 @@ export type Recommendation = {
   priority: string
 }
 
+export type AdaptiveFocusService = {
+  awsService: string
+  answered: number
+  wrongCount: number
+  accuracyPercent: number
+  priorityScore: number
+  reason: string
+}
+
+export type AdaptiveNextAction = {
+  awsService: string
+  difficulty: Difficulty
+  questionCount: number
+  mode: 'study' | 'exam'
+  reason: string
+}
+
+export type AdaptivePlan = {
+  generatedAt: string
+  overallLevel: 'FOUNDATION' | 'DEVELOPING' | 'CONSOLIDATING' | 'STRONG'
+  focusServices: AdaptiveFocusService[]
+  nextAction: AdaptiveNextAction
+}
+
 export type StudyTrail = {
   id: string
   title: string
@@ -209,6 +233,10 @@ export function getLearningProgress(): Promise<ServiceProgress[]> {
 
 export function getRecommendation(): Promise<Recommendation> {
   return request<Recommendation>('/learning/recommendation')
+}
+
+export function getAdaptivePlan(): Promise<AdaptivePlan> {
+  return request<AdaptivePlan>('/learning/adaptive/plan')
 }
 
 export function getTrails(): Promise<StudyTrail[]> {

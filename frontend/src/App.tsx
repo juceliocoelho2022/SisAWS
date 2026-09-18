@@ -18,11 +18,13 @@ import {
   PlayCircle,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Target,
   UserCircle,
   XCircle
 } from 'lucide-react'
 import {
+  AdaptivePlan,
   AnswerCheck,
   AuthUser,
   Dashboard,
@@ -38,6 +40,7 @@ import {
   checkAnswer,
   clearSession,
   finishSimulation,
+  getAdaptivePlan,
   getDashboard,
   getErrorNotebook,
   getFlashcards,
@@ -52,7 +55,7 @@ import {
   register
 } from './api'
 
-type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress'
+type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress' | 'adaptive'
 type Theme = 'light' | 'moderate' | 'dark'
 type SimulationMode = 'study' | 'exam'
 
@@ -81,6 +84,7 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null)
+  const [adaptivePlan, setAdaptivePlan] = useState<AdaptivePlan | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [errorEntries, setErrorEntries] = useState<ErrorNotebookEntry[]>([])
   const [trails, setTrails] = useState<StudyTrail[]>([])
@@ -249,6 +253,48 @@ export default function App() {
     }
   }
 
+  async function openAdaptive() {
+    try {
+      const plan = await getAdaptivePlan()
+      setAdaptivePlan(plan)
+      setPage('adaptive')
+      setError('')
+    } catch {
+      setError('Não foi possível gerar sua revisão inteligente.')
+    }
+  }
+
+  async function startAdaptiveSession() {
+    if (!adaptivePlan) return
+
+    const next = adaptivePlan.nextAction
+
+    try {
+      const loaded = await getQuestions(next.questionCount, next.awsService, next.difficulty)
+
+      if (loaded.length === 0) {
+        setError('O plano foi gerado, mas ainda não há questões suficientes para este foco.')
+        return
+      }
+
+      setSimulationMode(next.mode)
+      setSimulationService(next.awsService)
+      setSimulationDifficulty(next.difficulty)
+      setQuestionLimit(next.questionCount)
+      setQuestions(loaded)
+      setAnswers({})
+      setStudyFeedback({})
+      setReviewQuestionIds(new Set())
+      setIndex(0)
+      setSecondsRemaining(EXAM_DURATION_SECONDS)
+      setResult(null)
+      setPage('simulation')
+      setError('')
+    } catch {
+      setError('Não foi possível iniciar a sessão adaptativa.')
+    }
+  }
+
   async function selectAnswer(optionId: number) {
     if (!current) return
 
@@ -308,6 +354,7 @@ export default function App() {
     setUser(null)
     setDashboard(null)
     setRecommendation(null)
+    setAdaptivePlan(null)
     setQuestions([])
     setErrorEntries([])
     setTrails([])
@@ -340,7 +387,8 @@ export default function App() {
     errors: 'Caderno de Erros',
     trails: 'Trilhas AWS',
     flashcards: 'Flashcards',
-    progress: 'Meu Progresso'
+    progress: 'Meu Progresso',
+    adaptive: 'Revisão Inteligente'
   }
 
   return (
@@ -354,6 +402,7 @@ export default function App() {
           <button className={page === 'trails' ? 'active' : ''} onClick={openTrails}><BookOpen/> Trilhas AWS</button>
           <button className={page === 'flashcards' ? 'active' : ''} onClick={openFlashcards}><Brain/> Flashcards</button>
           <button className={page === 'progress' ? 'active' : ''} onClick={openProgress}><BarChart3/> Meu Progresso</button>
+          <button className={page === 'adaptive' ? 'active' : ''} onClick={openAdaptive}><Sparkles/> Revisão Inteligente</button>
           <button className={page === 'errors' ? 'active' : ''} onClick={openErrorNotebook}><NotebookPen/> Caderno de Erros</button>
           <button disabled><Award/> Certificações</button>
           <button disabled><History/> Histórico completo</button>
@@ -366,7 +415,7 @@ export default function App() {
             <span>{user.email}</span>
           </div>
         </div>
-        <div className="version">v1.3 • AWS Learning Lab</div>
+        <div className="version">v1.5 • AWS Learning Lab</div>
       </aside>
 
       <main>
@@ -418,6 +467,9 @@ export default function App() {
                 <span className="focus-service">{recommendation?.awsService ?? 'IAM'}</span>
                 <button className="secondary" onClick={() => openSimulationSetup(recommendation?.awsService ?? 'IAM')}>
                   <Target size={16}/> Praticar serviço
+                </button>
+                <button className="secondary adaptive-shortcut" onClick={openAdaptive}>
+                  <Sparkles size={16}/> Revisão inteligente
                 </button>
               </div>
             </section>
@@ -722,6 +774,86 @@ export default function App() {
           </div>
         )}
 
+
+        {page === 'adaptive' && adaptivePlan && (
+          <div className="page-content adaptive-page">
+            <section className="adaptive-shell">
+              <div className="adaptive-hero">
+                <div>
+                  <p className="eyebrow">PLANO PERSONALIZADO</p>
+                  <h2>O SisAWS analisou seus pontos de atenção</h2>
+                  <p>
+                    O ranking combina taxa de acerto, quantidade de respostas e reincidência de erros.
+                    Quanto maior a prioridade, mais cedo vale revisar aquele serviço.
+                  </p>
+                </div>
+                <div className="adaptive-level">
+                  <span>Nível atual</span>
+                  <strong>{adaptiveLevelLabel(adaptivePlan.overallLevel)}</strong>
+                </div>
+              </div>
+
+              <section className="adaptive-next">
+                <div className="adaptive-next-icon"><Sparkles size={26}/></div>
+                <div className="adaptive-next-copy">
+                  <p className="eyebrow">PRÓXIMA AÇÃO</p>
+                  <h3>{adaptivePlan.nextAction.awsService} • {adaptivePlan.nextAction.difficulty}</h3>
+                  <p>{adaptivePlan.nextAction.reason}</p>
+                  <div className="adaptive-tags">
+                    <span>Modo Estudo</span>
+                    <span>{adaptivePlan.nextAction.questionCount} questões</span>
+                    <span>{adaptivePlan.nextAction.difficulty}</span>
+                  </div>
+                </div>
+                <button className="primary adaptive-start" onClick={startAdaptiveSession}>
+                  <PlayCircle size={18}/> Iniciar sessão adaptativa
+                </button>
+              </section>
+
+              <div className="adaptive-ranking-heading">
+                <div>
+                  <p className="eyebrow">RANKING DE PRIORIDADE</p>
+                  <h3>Serviços que merecem mais atenção</h3>
+                </div>
+                <small>Atualizado em {new Date(adaptivePlan.generatedAt).toLocaleString('pt-BR')}</small>
+              </div>
+
+              <div className="adaptive-ranking">
+                {adaptivePlan.focusServices.map((item, itemIndex) => (
+                  <article className="adaptive-row" key={item.awsService}>
+                    <div className="adaptive-rank">{itemIndex + 1}</div>
+                    <div className="adaptive-service">
+                      <div className="adaptive-service-top">
+                        <strong>{item.awsService}</strong>
+                        <span>{item.priorityScore}/100 prioridade</span>
+                      </div>
+                      <div className="adaptive-priority-track">
+                        <span style={{width: `${item.priorityScore}%`}}/>
+                      </div>
+                      <p>{item.reason}</p>
+                      <div className="adaptive-stats">
+                        <span>{item.accuracyPercent}% de acerto</span>
+                        <span>{item.answered} respostas</span>
+                        <span>{item.wrongCount} erros registrados</span>
+                      </div>
+                    </div>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setSimulationMode('study')
+                        setQuestionLimit(5)
+                        openSimulationSetup(item.awsService, item.accuracyPercent < 55 ? 'EASY' : item.accuracyPercent < 75 ? 'MEDIUM' : 'HARD')
+                      }}
+                    >
+                      Praticar
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
         {page === 'errors' && (
           <div className="page-content notebook-content">
             <section className="notebook-card">
@@ -761,6 +893,16 @@ export default function App() {
       </main>
     </div>
   )
+}
+
+function adaptiveLevelLabel(level: AdaptivePlan['overallLevel']) {
+  const labels = {
+    FOUNDATION: 'Fundamentos',
+    DEVELOPING: 'Em desenvolvimento',
+    CONSOLIDATING: 'Consolidando',
+    STRONG: 'Forte'
+  }
+  return labels[level]
 }
 
 function statusLabel(status: ServiceProgress['status']) {
