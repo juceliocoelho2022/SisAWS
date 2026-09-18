@@ -15,11 +15,13 @@ export type AuthResponse = {
 
 export type Option = { id: number; text: string }
 
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXAM'
+
 export type Question = {
   id: number
   domain: string
   awsService: string
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'EXAM'
+  difficulty: Difficulty
   prompt: string
   options: Option[]
 }
@@ -56,6 +58,48 @@ export type ErrorNotebookEntry = {
   explanation: string
   wrongCount: number
   lastWrongAt: string
+}
+
+export type ServiceProgress = {
+  awsService: string
+  answered: number
+  correctAnswers: number
+  accuracyPercent: number
+  status: 'STARTING' | 'REVIEW' | 'GOOD' | 'STRONG'
+  lastAnsweredAt: string
+}
+
+export type Recommendation = {
+  awsService: string
+  title: string
+  reason: string
+  recommendedAction: string
+  priority: string
+}
+
+export type StudyTrail = {
+  id: string
+  title: string
+  description: string
+  services: string[]
+  level: string
+  estimatedMinutes: number
+}
+
+export type Flashcard = {
+  id: number
+  awsService: string
+  question: string
+  answer: string
+}
+
+export type HistoryAttempt = {
+  id: number
+  certificationCode: string
+  totalQuestions: number
+  correctAnswers: number
+  scorePercent: number
+  finishedAt: string
 }
 
 export function getStoredToken() {
@@ -130,12 +174,41 @@ export function getDashboard(): Promise<Dashboard> {
   return request<Dashboard>('/dashboard')
 }
 
-export function getQuestions(limit = 10): Promise<Question[]> {
-  return request<Question[]>(`/questions?certification=SAA-C03&limit=${limit}`)
+export function getQuestions(limit = 10, service = '', difficulty = ''): Promise<Question[]> {
+  const params = new URLSearchParams({
+    certification: 'SAA-C03',
+    limit: String(limit)
+  })
+
+  if (service) params.set('service', service)
+  if (difficulty) params.set('difficulty', difficulty)
+
+  return request<Question[]>(`/questions?${params.toString()}`)
 }
 
 export function getErrorNotebook(): Promise<ErrorNotebookEntry[]> {
   return request<ErrorNotebookEntry[]>('/error-notebook')
+}
+
+export function getLearningProgress(): Promise<ServiceProgress[]> {
+  return request<ServiceProgress[]>('/learning/progress')
+}
+
+export function getRecommendation(): Promise<Recommendation> {
+  return request<Recommendation>('/learning/recommendation')
+}
+
+export function getTrails(): Promise<StudyTrail[]> {
+  return request<StudyTrail[]>('/learning/trails')
+}
+
+export function getFlashcards(service = ''): Promise<Flashcard[]> {
+  const suffix = service ? `?service=${encodeURIComponent(service)}` : ''
+  return request<Flashcard[]>(`/learning/flashcards${suffix}`)
+}
+
+export function getHistory(): Promise<HistoryAttempt[]> {
+  return request<HistoryAttempt[]>('/simulations/history')
 }
 
 export function finishSimulation(

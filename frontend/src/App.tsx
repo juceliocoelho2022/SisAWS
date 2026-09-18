@@ -1,37 +1,62 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   Award,
+  BarChart3,
+  BookOpen,
   BookOpenCheck,
+  Brain,
   Cloud,
   Gauge,
   History,
+  Lightbulb,
   LogOut,
   NotebookPen,
   PlayCircle,
   ShieldCheck,
+  SlidersHorizontal,
+  Target,
   UserCircle
 } from 'lucide-react'
 import {
   AuthUser,
   Dashboard,
+  Difficulty,
   ErrorNotebookEntry,
+  Flashcard,
+  HistoryAttempt,
   Question,
+  Recommendation,
+  ServiceProgress,
   SimulationResult,
+  StudyTrail,
   clearSession,
   finishSimulation,
   getDashboard,
   getErrorNotebook,
+  getFlashcards,
+  getHistory,
+  getLearningProgress,
   getMe,
   getQuestions,
+  getRecommendation,
   getStoredToken,
+  getTrails,
   login,
   register
 } from './api'
 
-type Page = 'dashboard' | 'simulation' | 'errors'
+type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress'
 type Theme = 'light' | 'moderate' | 'dark'
 
 const THEME_KEY = 'sisaws-theme'
+const SERVICES = ['', 'IAM', 'VPC', 'EC2', 'Auto Scaling', 'S3', 'CloudFront', 'RDS', 'DynamoDB', 'SQS', 'KMS', 'Route 53']
+const DIFFICULTIES: {value: '' | Difficulty; label: string}[] = [
+  {value: '', label: 'Todas'},
+  {value: 'EASY', label: 'Fácil'},
+  {value: 'MEDIUM', label: 'Médio'},
+  {value: 'HARD', label: 'Difícil'},
+  {value: 'EXAM', label: 'Estilo prova'}
+]
 
 function initialTheme(): Theme {
   if (typeof window === 'undefined') return 'moderate'
@@ -45,8 +70,16 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [errorEntries, setErrorEntries] = useState<ErrorNotebookEntry[]>([])
+  const [trails, setTrails] = useState<StudyTrail[]>([])
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [serviceProgress, setServiceProgress] = useState<ServiceProgress[]>([])
+  const [history, setHistory] = useState<HistoryAttempt[]>([])
+  const [revealedCards, setRevealedCards] = useState<Set<number>>(new Set())
+  const [simulationService, setSimulationService] = useState('')
+  const [simulationDifficulty, setSimulationDifficulty] = useState<'' | Difficulty>('')
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [result, setResult] = useState<SimulationResult | null>(null)
@@ -80,16 +113,41 @@ export default function App() {
 
   async function refreshDashboard() {
     try {
-      setDashboard(await getDashboard())
+      const [dashboardResponse, recommendationResponse] = await Promise.all([
+        getDashboard(),
+        getRecommendation()
+      ])
+      setDashboard(dashboardResponse)
+      setRecommendation(recommendationResponse)
       setError('')
     } catch {
       setError('Não foi possível carregar seu progresso. Verifique o backend.')
     }
   }
 
-  async function startSimulation() {
+  function openSimulationSetup(service = '', difficulty: '' | Difficulty = '') {
+    setSimulationService(service)
+    setSimulationDifficulty(difficulty)
+    setQuestions([])
+    setAnswers({})
+    setIndex(0)
+    setResult(null)
+    setPage('simulation')
+    setError('')
+  }
+
+  async function startSimulation(service = simulationService, difficulty = simulationDifficulty) {
     try {
-      setQuestions(await getQuestions(10))
+      const loaded = await getQuestions(10, service, difficulty)
+
+      if (loaded.length === 0) {
+        setError('Nenhuma questão encontrada para estes filtros. Tente outro serviço ou dificuldade.')
+        return
+      }
+
+      setSimulationService(service)
+      setSimulationDifficulty(difficulty)
+      setQuestions(loaded)
       setAnswers({})
       setIndex(0)
       setResult(null)
@@ -110,6 +168,42 @@ export default function App() {
     }
   }
 
+  async function openTrails() {
+    try {
+      setTrails(await getTrails())
+      setPage('trails')
+      setError('')
+    } catch {
+      setError('Não foi possível carregar as trilhas de estudo.')
+    }
+  }
+
+  async function openFlashcards() {
+    try {
+      setFlashcards(await getFlashcards())
+      setRevealedCards(new Set())
+      setPage('flashcards')
+      setError('')
+    } catch {
+      setError('Não foi possível carregar os flashcards.')
+    }
+  }
+
+  async function openProgress() {
+    try {
+      const [progressResponse, historyResponse] = await Promise.all([
+        getLearningProgress(),
+        getHistory()
+      ])
+      setServiceProgress(progressResponse)
+      setHistory(historyResponse)
+      setPage('progress')
+      setError('')
+    } catch {
+      setError('Não foi possível carregar sua análise de progresso.')
+    }
+  }
+
   async function finish() {
     if (answered !== questions.length) return
 
@@ -118,6 +212,7 @@ export default function App() {
         questionId: q.id,
         selectedOptionIds: [answers[q.id]]
       }))
+
       const response = await finishSimulation(payload)
       setResult(response)
       await refreshDashboard()
@@ -126,19 +221,33 @@ export default function App() {
     }
   }
 
+  function toggleFlashcard(id: number) {
+    setRevealedCards(previous => {
+      const next = new Set(previous)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   function logout() {
     clearSession()
     setUser(null)
     setDashboard(null)
+    setRecommendation(null)
     setQuestions([])
     setErrorEntries([])
+    setTrails([])
+    setFlashcards([])
+    setServiceProgress([])
+    setHistory([])
     setResult(null)
     setPage('dashboard')
     setError('')
   }
 
   const resultMap = useMemo(
-    () => new Map(result?.results.map(r => [r.questionId, r]) ?? []),
+    () => new Map(result?.results.map(item => [item.questionId, item]) ?? []),
     [result]
   )
 
@@ -150,12 +259,14 @@ export default function App() {
     return <AuthScreen theme={theme} setTheme={setTheme} onAuthenticated={setUser} />
   }
 
-  const pageTitle =
-    page === 'dashboard'
-      ? `Olá, ${user.name.split(' ')[0]}`
-      : page === 'simulation'
-        ? 'Simulado SAA-C03'
-        : 'Caderno de Erros'
+  const pageTitle: Record<Page, string> = {
+    dashboard: `Olá, ${user.name.split(' ')[0]}`,
+    simulation: 'Simulados SAA-C03',
+    errors: 'Caderno de Erros',
+    trails: 'Trilhas AWS',
+    flashcards: 'Flashcards',
+    progress: 'Meu Progresso'
+  }
 
   return (
     <div className="app-shell">
@@ -163,17 +274,14 @@ export default function App() {
         <div className="brand"><Cloud size={28}/><span>SisAWS</span></div>
 
         <nav>
-          <button className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}>
-            <Gauge/> Dashboard
-          </button>
-          <button className={page === 'simulation' ? 'active' : ''} onClick={startSimulation}>
-            <BookOpenCheck/> Simulados
-          </button>
-          <button className={page === 'errors' ? 'active' : ''} onClick={openErrorNotebook}>
-            <NotebookPen/> Caderno de Erros
-          </button>
+          <button className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}><Gauge/> Dashboard</button>
+          <button className={page === 'simulation' ? 'active' : ''} onClick={() => openSimulationSetup()}><BookOpenCheck/> Simulados</button>
+          <button className={page === 'trails' ? 'active' : ''} onClick={openTrails}><BookOpen/> Trilhas AWS</button>
+          <button className={page === 'flashcards' ? 'active' : ''} onClick={openFlashcards}><Brain/> Flashcards</button>
+          <button className={page === 'progress' ? 'active' : ''} onClick={openProgress}><BarChart3/> Meu Progresso</button>
+          <button className={page === 'errors' ? 'active' : ''} onClick={openErrorNotebook}><NotebookPen/> Caderno de Erros</button>
           <button disabled><Award/> Certificações</button>
-          <button disabled><History/> Histórico</button>
+          <button disabled><History/> Histórico completo</button>
         </nav>
 
         <div className="sidebar-user">
@@ -183,21 +291,19 @@ export default function App() {
             <span>{user.email}</span>
           </div>
         </div>
-        <div className="version">v1.2 • AWS Learning Lab</div>
+        <div className="version">v1.3 • AWS Learning Lab</div>
       </aside>
 
       <main>
         <header>
           <div className="header-title">
             <p className="eyebrow">AWS LEARNING PLATFORM</p>
-            <h1>{pageTitle}</h1>
+            <h1>{pageTitle[page]}</h1>
           </div>
 
           <div className="header-actions">
             <ThemeSwitcher theme={theme} setTheme={setTheme}/>
-            <button className="logout-button" onClick={logout} title="Sair">
-              <LogOut size={17}/> Sair
-            </button>
+            <button className="logout-button" onClick={logout} title="Sair"><LogOut size={17}/> Sair</button>
           </div>
         </header>
 
@@ -208,11 +314,11 @@ export default function App() {
             <section className="hero">
               <div>
                 <span className="pill">AWS Certified Solutions Architect</span>
-                <h2>Prepare-se construindo, respondendo e revisando.</h2>
-                <p>Seu progresso agora é individual. Cada simulado alimenta suas métricas e cada erro entra automaticamente no seu caderno de revisão.</p>
+                <h2>Estude com base no seu desempenho real.</h2>
+                <p>O SisAWS agora mede seus acertos por serviço e direciona a próxima revisão com base no que você responde.</p>
                 <div className="hero-buttons">
-                  <button className="primary" onClick={startSimulation}><PlayCircle/> Iniciar simulado</button>
-                  <button className="secondary" onClick={openErrorNotebook}><NotebookPen/> Revisar erros</button>
+                  <button className="primary" onClick={() => openSimulationSetup()}><PlayCircle/> Novo simulado</button>
+                  <button className="secondary" onClick={openProgress}><Target/> Ver meu progresso</button>
                 </div>
               </div>
               <div className="hero-mark">AWS</div>
@@ -226,15 +332,60 @@ export default function App() {
               <Metric label="Para revisar" value={dashboard?.errorNotebookCount ?? 0} />
             </section>
 
-            <section className="panel">
-              <div>
-                <p className="eyebrow">ESTUDO ORIENTADO</p>
-                <h3>Domine arquitetura por cenários</h3>
-                <p>IAM → VPC → EC2 → S3 → RDS → Serverless → Mensageria → Containers.</p>
+            <section className="panel recommendation-panel">
+              <div className="recommendation-copy">
+                <p className="eyebrow">RECOMENDAÇÃO DO SISAWS</p>
+                <h3>{recommendation?.title ?? 'Continue praticando'}</h3>
+                <p>{recommendation?.reason ?? 'Faça um simulado para gerar uma recomendação personalizada.'}</p>
+                <small>{recommendation?.recommendedAction}</small>
               </div>
-              <div className="domain-list">
-                <span>Segurança</span><span>Resiliência</span><span>Performance</span><span>Custos</span>
+              <div className="recommendation-action">
+                <span className="focus-service">{recommendation?.awsService ?? 'IAM'}</span>
+                <button className="secondary" onClick={() => openSimulationSetup(recommendation?.awsService ?? 'IAM')}>
+                  <Target size={16}/> Praticar serviço
+                </button>
               </div>
+            </section>
+          </div>
+        )}
+
+        {page === 'simulation' && !current && !result && (
+          <div className="page-content setup-content">
+            <section className="setup-card">
+              <div className="setup-heading">
+                <SlidersHorizontal size={26}/>
+                <div>
+                  <p className="eyebrow">SIMULADO PERSONALIZADO</p>
+                  <h2>Escolha como quer praticar</h2>
+                  <p>Deixe os filtros em “Todos” para um simulado misto ou foque exatamente no serviço que precisa revisar.</p>
+                </div>
+              </div>
+
+              <div className="filter-grid">
+                <label>
+                  Serviço AWS
+                  <select value={simulationService} onChange={event => setSimulationService(event.target.value)}>
+                    {SERVICES.map(service => <option value={service} key={service || 'all'}>{service || 'Todos os serviços'}</option>)}
+                  </select>
+                </label>
+
+                <label>
+                  Dificuldade
+                  <select value={simulationDifficulty} onChange={event => setSimulationDifficulty(event.target.value as '' | Difficulty)}>
+                    {DIFFICULTIES.map(item => <option value={item.value} key={item.value || 'all'}>{item.label}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div className="setup-summary">
+                <div><span>Certificação</span><strong>SAA-C03</strong></div>
+                <div><span>Serviço</span><strong>{simulationService || 'Misto'}</strong></div>
+                <div><span>Dificuldade</span><strong>{DIFFICULTIES.find(item => item.value === simulationDifficulty)?.label}</strong></div>
+              </div>
+
+              <button className="primary setup-start" onClick={() => startSimulation()}>
+                <PlayCircle/> Iniciar prática
+              </button>
             </section>
           </div>
         )}
@@ -250,13 +401,13 @@ export default function App() {
               <p className="domain">{current.domain}</p>
               <h2>{current.prompt}</h2>
               <div className="options">
-                {current.options.map((option, i) => (
+                {current.options.map((option, optionIndex) => (
                   <button
                     key={option.id}
                     className={answers[current.id] === option.id ? 'selected' : ''}
                     onClick={() => setAnswers({...answers, [current.id]: option.id})}
                   >
-                    <b>{String.fromCharCode(65 + i)}</b>{option.text}
+                    <b>{String.fromCharCode(65 + optionIndex)}</b>{option.text}
                   </button>
                 ))}
               </div>
@@ -276,20 +427,121 @@ export default function App() {
               <p className="eyebrow">RESULTADO</p>
               <div className="score">{result.scorePercent}%</div>
               <h2>{result.correctAnswers} de {result.totalQuestions} questões corretas</h2>
-              <p>As questões incorretas já foram registradas no seu Caderno de Erros.</p>
+              <p>Seu progresso por serviço foi atualizado e os erros foram enviados para o Caderno de Erros.</p>
               <div className="review-list">
-                {questions.map((q, idx) => {
-                  const r = resultMap.get(q.id)
-                  return <div className={r?.correct ? 'review ok' : 'review fail'} key={q.id}>
-                    <strong>Questão {idx + 1} • {q.awsService}</strong>
-                    <span>{r?.correct ? 'Correta' : 'Adicionada ao caderno'}</span>
-                    <p>{r?.explanation}</p>
+                {questions.map((question, questionIndex) => {
+                  const item = resultMap.get(question.id)
+                  return <div className={item?.correct ? 'review ok' : 'review fail'} key={question.id}>
+                    <strong>Questão {questionIndex + 1} • {question.awsService}</strong>
+                    <span>{item?.correct ? 'Correta' : 'Revisar'}</span>
+                    <p>{item?.explanation}</p>
                   </div>
                 })}
               </div>
               <div className="quiz-actions">
-                <button onClick={openErrorNotebook}>Caderno de Erros</button>
-                <button className="primary" onClick={startSimulation}>Novo simulado</button>
+                <button onClick={openProgress}>Ver progresso</button>
+                <button className="primary" onClick={() => startSimulation(simulationService, simulationDifficulty)}>Repetir prática</button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {page === 'trails' && (
+          <div className="page-content learning-page">
+            <section className="learning-shell">
+              <div className="section-heading">
+                <div><p className="eyebrow">ROADMAP DE ESTUDO</p><h2>Trilhas organizadas por competência</h2></div>
+                <span className="notebook-count">{trails.length} trilhas</span>
+              </div>
+              <div className="trail-grid">
+                {trails.map((trail, trailIndex) => (
+                  <article className="trail-card" key={trail.id}>
+                    <div className="trail-number">{String(trailIndex + 1).padStart(2, '0')}</div>
+                    <div>
+                      <div className="trail-meta"><span>{trail.level}</span><span>{trail.estimatedMinutes} min</span></div>
+                      <h3>{trail.title}</h3>
+                      <p>{trail.description}</p>
+                      <div className="service-chips">
+                        {trail.services.map(service => (
+                          <button key={service} onClick={() => openSimulationSetup(service)}>{service}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {page === 'flashcards' && (
+          <div className="page-content learning-page">
+            <section className="learning-shell">
+              <div className="section-heading">
+                <div><p className="eyebrow">REVISÃO RÁPIDA</p><h2>Clique no card para revelar a resposta</h2></div>
+                <span className="notebook-count">{flashcards.length} cards</span>
+              </div>
+              <div className="flashcard-grid">
+                {flashcards.map(card => {
+                  const revealed = revealedCards.has(card.id)
+                  return (
+                    <button className={revealed ? 'flashcard revealed' : 'flashcard'} key={card.id} onClick={() => toggleFlashcard(card.id)}>
+                      <div className="flashcard-top"><span className="pill">{card.awsService}</span><Lightbulb size={18}/></div>
+                      <strong>{card.question}</strong>
+                      <p>{revealed ? card.answer : 'Clique para revelar a resposta'}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {page === 'progress' && (
+          <div className="page-content progress-page">
+            <section className="progress-shell">
+              <div className="section-heading">
+                <div><p className="eyebrow">ANÁLISE POR SERVIÇO</p><h2>Onde você está forte e onde precisa revisar</h2></div>
+                <button className="secondary" onClick={() => openSimulationSetup(recommendation?.awsService ?? '')}><Target size={16}/> Prática recomendada</button>
+              </div>
+
+              {serviceProgress.length === 0 ? (
+                <div className="empty-state">
+                  <BarChart3 size={46}/>
+                  <h3>Ainda não há dados por serviço</h3>
+                  <p>Finalize seu primeiro simulado para o SisAWS começar a medir sua evolução.</p>
+                  <button className="primary" onClick={() => openSimulationSetup()}>Começar agora</button>
+                </div>
+              ) : (
+                <div className="service-progress-list">
+                  {serviceProgress.map(item => (
+                    <article className="service-progress-row" key={item.awsService}>
+                      <div className="service-progress-title">
+                        <strong>{item.awsService}</strong>
+                        <span className={`status-badge status-${item.status.toLowerCase()}`}>{statusLabel(item.status)}</span>
+                      </div>
+                      <div className="accuracy-line">
+                        <div className="accuracy-track"><span style={{width: `${item.accuracyPercent}%`}}/></div>
+                        <b>{item.accuracyPercent}%</b>
+                      </div>
+                      <small>{item.correctAnswers} acertos em {item.answered} respostas</small>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <div className="history-section">
+                <div className="section-heading compact"><div><p className="eyebrow">ÚLTIMAS TENTATIVAS</p><h3>Evolução recente</h3></div></div>
+                <div className="history-list">
+                  {history.length === 0 && <p className="muted">Nenhum simulado finalizado ainda.</p>}
+                  {history.map(attempt => (
+                    <article className="history-row" key={attempt.id}>
+                      <div><strong>{attempt.certificationCode}</strong><span>{new Date(attempt.finishedAt).toLocaleString('pt-BR')}</span></div>
+                      <div className="history-score-track"><span style={{width: `${attempt.scorePercent}%`}}/></div>
+                      <b>{attempt.scorePercent}%</b>
+                    </article>
+                  ))}
+                </div>
               </div>
             </section>
           </div>
@@ -299,10 +551,7 @@ export default function App() {
           <div className="page-content notebook-content">
             <section className="notebook-card">
               <div className="notebook-heading">
-                <div>
-                  <p className="eyebrow">REVISÃO INTELIGENTE</p>
-                  <h2>Questões que merecem sua atenção</h2>
-                </div>
+                <div><p className="eyebrow">REVISÃO INTELIGENTE</p><h2>Questões que merecem sua atenção</h2></div>
                 <span className="notebook-count">{errorEntries.length} para revisar</span>
               </div>
 
@@ -311,24 +560,22 @@ export default function App() {
                   <ShieldCheck size={46}/>
                   <h3>Seu caderno está vazio</h3>
                   <p>Quando você errar uma questão em um simulado, ela aparecerá aqui automaticamente.</p>
-                  <button className="primary" onClick={startSimulation}>Fazer um simulado</button>
+                  <button className="primary" onClick={() => openSimulationSetup()}>Fazer um simulado</button>
                 </div>
               ) : (
                 <div className="error-list">
                   {errorEntries.map(entry => (
                     <article className="error-entry" key={entry.id}>
                       <div className="error-entry-top">
-                        <div>
-                          <span className="pill">{entry.awsService}</span>
-                          <span className="domain-inline">{entry.domain}</span>
-                        </div>
+                        <div><span className="pill">{entry.awsService}</span><span className="domain-inline">{entry.domain}</span></div>
                         <strong>{entry.wrongCount}x erro{entry.wrongCount > 1 ? 's' : ''}</strong>
                       </div>
                       <h3>{entry.prompt}</h3>
-                      <div className="explanation-box">
-                        <b>Revisão:</b> {entry.explanation}
+                      <div className="explanation-box"><b>Revisão:</b> {entry.explanation}</div>
+                      <div className="error-entry-actions">
+                        <small>Último erro: {new Date(entry.lastWrongAt).toLocaleString('pt-BR')}</small>
+                        <button className="secondary" onClick={() => openSimulationSetup(entry.awsService)}>Praticar {entry.awsService}</button>
                       </div>
-                      <small>Último erro: {new Date(entry.lastWrongAt).toLocaleString('pt-BR')}</small>
                     </article>
                   ))}
                 </div>
@@ -339,6 +586,16 @@ export default function App() {
       </main>
     </div>
   )
+}
+
+function statusLabel(status: ServiceProgress['status']) {
+  const labels = {
+    STARTING: 'Começando',
+    REVIEW: 'Revisar',
+    GOOD: 'Bom',
+    STRONG: 'Forte'
+  }
+  return labels[status]
 }
 
 function ThemeSwitcher({theme, setTheme}: {theme: Theme; setTheme: (theme: Theme) => void}) {
@@ -401,30 +658,16 @@ function AuthScreen({
 
         <form onSubmit={submit}>
           <div className="auth-tabs">
-            <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => {setMode('login'); setError('')}}>
-              Entrar
-            </button>
-            <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => {setMode('register'); setError('')}}>
-              Criar conta
-            </button>
+            <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => {setMode('login'); setError('')}}>Entrar</button>
+            <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => {setMode('register'); setError('')}}>Criar conta</button>
           </div>
 
           {mode === 'register' && (
-            <label>
-              Nome
-              <input value={name} onChange={e => setName(e.target.value)} minLength={2} required placeholder="Seu nome"/>
-            </label>
+            <label>Nome<input value={name} onChange={event => setName(event.target.value)} minLength={2} required placeholder="Seu nome"/></label>
           )}
 
-          <label>
-            E-mail
-            <input value={email} onChange={e => setEmail(e.target.value)} type="email" required placeholder="voce@email.com"/>
-          </label>
-
-          <label>
-            Senha
-            <input value={password} onChange={e => setPassword(e.target.value)} type="password" minLength={8} required placeholder="Mínimo de 8 caracteres"/>
-          </label>
+          <label>E-mail<input value={email} onChange={event => setEmail(event.target.value)} type="email" required placeholder="voce@email.com"/></label>
+          <label>Senha<input value={password} onChange={event => setPassword(event.target.value)} type="password" minLength={8} required placeholder="Mínimo de 8 caracteres"/></label>
 
           {error && <div className="auth-error">{error}</div>}
 
