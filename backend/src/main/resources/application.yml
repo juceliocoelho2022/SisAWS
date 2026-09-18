@@ -23,3 +23,9 @@ management:
     web:
       exposure:
         include: health,info
+
+sisaws:
+  security:
+    jwt:
+      secret: ${SISAWS_JWT_SECRET:U2lzQVdTLWRldi1qd3Qtc2VjcmV0LWtleS0yMDI2LXNlZ3VyYS1sb2NhbA==}
+      expiration-minutes: ${SISAWS_JWT_EXPIRATION_MINUTES:480}
