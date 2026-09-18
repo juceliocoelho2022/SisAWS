@@ -515,6 +515,10 @@ docs(readme): document v1.5 adaptive learning
 fix(ui): keep simulation start action visible
 test(ci): add backend coverage and automated build pipeline
 docs(readme): document v1.6 quality pipeline
+feat(v2): prepare production containers and environment config
+feat(aws): add Terraform production foundation
+ci(aws): validate containers and Terraform
+docs(readme): document v2 cloud-ready foundation
 ```
 
 ---
@@ -591,21 +595,36 @@ docs(readme): document v1.6 quality pipeline
 - [ ] ampliar cobertura para controllers e repositories;
 - [ ] testes de integração com MockMvc.
 
-### v2
+### v2.0 — AWS Cloud Ready
 
-- [ ] frontend em S3 + CloudFront;
-- [ ] backend em ECS/Fargate;
-- [ ] RDS PostgreSQL;
-- [ ] ECR;
-- [ ] Route 53;
-- [ ] CloudWatch;
-- [ ] Secrets Manager.
+- [x] Dockerfile de produção para backend;
+- [x] Dockerfile de produção para frontend;
+- [x] configuração do frontend por `VITE_API_URL`;
+- [x] configuração de CORS por ambiente;
+- [x] profile PostgreSQL configurável por variáveis;
+- [x] Terraform com VPC pública/privada;
+- [x] S3 privado + CloudFront + OAC;
+- [x] CloudFront encaminhando `/api/*` para o backend sem cache;
+- [x] ECR para a imagem do backend;
+- [x] ECS Fargate em sub-redes privadas;
+- [x] Application Load Balancer restrito ao CloudFront;
+- [x] RDS PostgreSQL privado;
+- [x] Secrets Manager para credenciais e JWT;
+- [x] CloudWatch Logs;
+- [x] validação Terraform no GitHub Actions;
+- [x] build dos containers no CI;
+- [ ] executar o primeiro `terraform apply` na conta AWS;
+- [ ] publicar imagem no ECR;
+- [ ] publicar frontend no S3;
+- [ ] ativar tarefas ECS;
+- [ ] Route 53 + domínio personalizado;
+- [ ] ACM + TLS também entre CloudFront e ALB.
 
 ### v3
 
-- [ ] Terraform;
-- [ ] GitHub Actions;
-- [ ] testes automatizados;
+- [ ] deploy contínuo para AWS;
+- [ ] autoscaling do ECS;
+- [ ] alarmes CloudWatch;
 - [ ] observabilidade avançada;
 - [ ] arquitetura preparada para múltiplas certificações.
 
