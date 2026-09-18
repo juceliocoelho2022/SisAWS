@@ -37,11 +37,11 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  github_repository_parts    = split("/", var.github_repository)
-  github_repository_owner    = local.github_repository_parts[0]
-  github_repository_name     = local.github_repository_parts[1]
-  github_oidc_provider_arn   = trimspace(var.github_oidc_provider_arn) != "" ? var.github_oidc_provider_arn : aws_iam_openid_connect_provider.github[0].arn
-  github_oidc_subject        = "repo:${local.github_repository_owner}@${var.github_repository_owner_id}/${local.github_repository_name}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
+  github_repository_parts  = split("/", var.github_repository)
+  github_repository_owner  = local.github_repository_parts[0]
+  github_repository_name   = local.github_repository_parts[1]
+  github_oidc_provider_arn = trimspace(var.github_oidc_provider_arn) != "" ? var.github_oidc_provider_arn : aws_iam_openid_connect_provider.github[0].arn
+  github_oidc_subject      = "repo:${local.github_repository_owner}@${var.github_repository_owner_id}/${local.github_repository_name}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
 }
 
 resource "aws_iam_role" "github_deploy" {
