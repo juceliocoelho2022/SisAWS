@@ -420,3 +420,41 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
   .adaptive-rank{width:34px;height:34px}
   .adaptive-row>.secondary{grid-column:auto}
 }
+
+
+/* v1.5.1 - Setup screen viewport safety */
+.setup-content{
+  overflow:hidden;
+}
+.setup-card{
+  max-height:100%;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  padding-bottom:18px;
+}
+.setup-start{
+  position:sticky;
+  bottom:0;
+  z-index:5;
+  width:100%;
+  margin-top:16px;
+  padding:13px 18px;
+  box-shadow:0 -12px 24px color-mix(in srgb,var(--surface) 92%,transparent);
+}
+@media(max-height:820px) and (min-width:901px){
+  .setup-card{padding:22px}
+  .setup-heading h2{font-size:22px;margin:4px 0 5px}
+  .setup-heading p:last-child{font-size:12px;line-height:1.4}
+  .mode-grid{margin-top:16px;gap:10px}
+  .mode-card{padding:13px}
+  .filter-grid{margin:17px 0 12px;gap:11px}
+  .setup-summary{margin:12px 0;gap:8px}
+  .setup-summary>div{padding:10px}
+  .exam-reference{padding:9px 11px}
+}
+@media(max-width:900px){
+  .setup-content{overflow:visible}
+  .setup-card{max-height:none;overflow:visible}
+  .setup-start{position:static;box-shadow:none}
+}
