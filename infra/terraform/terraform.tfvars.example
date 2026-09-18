@@ -10,3 +10,10 @@ db_instance_class        = "db.t4g.micro"
 use_nat_gateway          = false
 enable_cloudfront        = false
 db_backup_retention_days = 1
+
+# GitHub Actions OIDC
+github_repository        = "juceliocoelho2022/SisAWS"
+github_branch            = "main"
+# If the account already has token.actions.githubusercontent.com configured,
+# set its ARN here instead of creating another provider.
+github_oidc_provider_arn = ""

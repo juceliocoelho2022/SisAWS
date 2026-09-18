@@ -38,3 +38,13 @@ output "network_profile" {
   description = "Network profile used by ECS."
   value       = var.use_nat_gateway ? "private-with-nat" : "public-ip-no-nat"
 }
+
+output "github_actions_deploy_role_arn" {
+  description = "IAM role assumed by GitHub Actions through OIDC for backend deployments."
+  value       = aws_iam_role.github_deploy.arn
+}
+
+output "github_oidc_provider_arn" {
+  description = "GitHub Actions OIDC provider used by the deployment role."
+  value       = local.github_oidc_provider_arn
+}

@@ -93,3 +93,55 @@ jobs:
 
       - name: Terraform validate
         run: terraform validate
+
+  deploy-backend:
+    name: Deploy backend - AWS ECS
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SISAWS_AWS_DEPLOY_ENABLED == 'true'
+    needs: [backend, frontend, infrastructure]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: ${{ vars.SISAWS_AWS_REGION }}
+      ECR_REPOSITORY: sisaws-dev-backend
+      ECS_CLUSTER: sisaws-dev-cluster
+      ECS_SERVICE: sisaws-dev-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.SISAWS_AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: sisaws-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE_URI="$REGISTRY/$ECR_REPOSITORY"
+          docker build -t "$IMAGE_URI:${GITHUB_SHA}" -t "$IMAGE_URI:latest" ./backend
+          docker push "$IMAGE_URI:${GITHUB_SHA}"
+          docker push "$IMAGE_URI:latest"
+
+      - name: Force ECS deployment
+        run: |
+          aws ecs update-service             --cluster "$ECS_CLUSTER"             --service "$ECS_SERVICE"             --force-new-deployment             --region "$AWS_REGION"             --no-cli-pager
+
+      - name: Wait for ECS service stability
+        run: |
+          aws ecs wait services-stable             --cluster "$ECS_CLUSTER"             --services "$ECS_SERVICE"             --region "$AWS_REGION"
+
+      - name: Show deployment status
+        run: |
+          aws ecs describe-services             --cluster "$ECS_CLUSTER"             --services "$ECS_SERVICE"             --region "$AWS_REGION"             --query "services[0].{Status:status,Desired:desiredCount,Running:runningCount,Pending:pendingCount}"             --output table

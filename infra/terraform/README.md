@@ -68,3 +68,44 @@ If AWS returns `Your account must be verified before you can add new CloudFront 
 ## Cost note
 
 The development profile removes NAT Gateway charges, but resources such as Application Load Balancer, RDS, public IPv4, Fargate, Secrets Manager and CloudWatch can still generate charges. Destroy lab resources when they are not needed.
+
+## GitHub Actions deployment with OIDC
+
+SisAWS uses GitHub OIDC federation instead of long-lived AWS access keys.
+
+Terraform creates a deployment role restricted to:
+
+- repository `juceliocoelho2022/SisAWS`;
+- branch `main`;
+- ECR push permissions only for the SisAWS backend repository;
+- ECS update/describe permissions only for the SisAWS backend service.
+
+Before the first apply, check whether the AWS account already has the GitHub OIDC provider:
+
+```powershell
+aws iam list-open-id-connect-providers `
+  --query "OpenIDConnectProviderList[].Arn" `
+  --output text
+```
+
+If an ARN ending in `oidc-provider/token.actions.githubusercontent.com` already exists, copy it to:
+
+```hcl
+github_oidc_provider_arn = "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
+```
+
+Otherwise leave `github_oidc_provider_arn = ""` and Terraform will create it.
+
+After applying, get the role ARN:
+
+```powershell
+terraform output -raw github_actions_deploy_role_arn
+```
+
+Then configure these GitHub Repository Variables:
+
+- `SISAWS_AWS_DEPLOY_ROLE_ARN` = Terraform output above;
+- `SISAWS_AWS_REGION` = `sa-east-1`;
+- `SISAWS_AWS_DEPLOY_ENABLED` = `true`.
+
+The deployment job runs only on pushes to `main`, after backend, frontend and Terraform CI jobs succeed. It builds the backend image, publishes both the commit SHA and `latest` tags to ECR, forces a new ECS deployment and waits for the service to become stable.
