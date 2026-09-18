@@ -24,9 +24,10 @@ A proposta é centralizar:
 - autenticação com Spring Security + JWT;
 - caderno de erros automático;
 - trilhas de estudo;
-- laboratórios práticos;
-- caderno de erros;
+- progresso por serviço AWS;
 - flashcards;
+- recomendações orientadas por desempenho;
+- laboratórios práticos;
 - modo adaptativo;
 - histórico de evolução.
 
@@ -73,7 +74,19 @@ O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para rece
 - serviço AWS e domínio da certificação;
 - explicação para revisão;
 - data do último erro;
-- dados isolados por aluno.
+- dados isolados por aluno;
+- prática focada diretamente no serviço que precisa de revisão.
+
+### Trilhas, Flashcards e Analytics
+
+- trilhas de estudo organizadas por competência;
+- flashcards autorais para revisão rápida;
+- progresso persistido por serviço AWS;
+- percentual de acertos por serviço;
+- classificação de status: começando, revisar, bom e forte;
+- recomendação automática do próximo serviço a estudar;
+- histórico visual das últimas tentativas;
+- simulados filtrados por serviço e dificuldade.
 
 ### Temas da interface
 
@@ -221,6 +234,7 @@ SisAWS/
 │   │   ├── certification/
 │   │   ├── dashboard/
 │   │   ├── errornotebook/
+│   │   ├── learning/
 │   │   ├── question/
 │   │   ├── security/
 │   │   ├── simulation/
@@ -299,9 +313,9 @@ Credenciais locais:
 JDBC URL: jdbc:h2:file:./data/sisaws
 User: sa
 Password:
-
-Os dados locais ficam persistidos no diretório `data/`, que é ignorado pelo Git. Assim, usuários, simulados e caderno de erros sobrevivem às reinicializações do backend.
 ```
+
+Os dados locais ficam persistidos no diretório `data/`, que é ignorado pelo Git. Assim, usuários, simulados, analytics e caderno de erros sobrevivem às reinicializações do backend.
 
 ### Frontend
 
@@ -343,8 +357,13 @@ SPRING_PROFILES_ACTIVE=postgres
 | GET | `/api/v1/certifications` | listar certificações |
 | GET | `/api/v1/dashboard` | indicadores individuais |
 | GET | `/api/v1/error-notebook` | caderno de erros do aluno |
+| GET | `/api/v1/learning/progress` | desempenho por serviço AWS |
+| GET | `/api/v1/learning/recommendation` | recomendação de estudo |
+| GET | `/api/v1/learning/trails` | trilhas AWS |
+| GET | `/api/v1/learning/flashcards` | flashcards |
 | GET | `/api/v1/questions?certification=SAA-C03&limit=10` | carregar questões |
-| POST | `/api/v1/simulations/finish` | finalizar e corrigir simulado |
+| GET | `/api/v1/questions?...&service=S3&difficulty=MEDIUM` | simulado filtrado |
+| POST | `/api/v1/simulations/finish` | finalizar, corrigir e atualizar analytics |
 | GET | `/api/v1/simulations/history` | histórico de tentativas |
 | GET | `/actuator/health` | health check |
 
@@ -429,6 +448,9 @@ feat(progress): link attempts and error notebook to students
 feat(web): add student login and error notebook experience
 docs(readme): document v1.2 authentication and progress
 fix(storage): persist local student progress with file H2
+feat(learning): add service analytics trails and flashcards
+feat(web): add trails flashcards and learning analytics
+docs(readme): document v1.3 learning experience
 ```
 
 ---
@@ -459,11 +481,14 @@ fix(storage): persist local student progress with file H2
 
 ### v1.3
 
-- [ ] flashcards;
-- [ ] trilhas AWS;
-- [ ] aulas;
-- [ ] progresso por serviço;
-- [ ] filtros por dificuldade.
+- [x] flashcards;
+- [x] trilhas AWS;
+- [x] progresso por serviço;
+- [x] filtros por serviço;
+- [x] filtros por dificuldade;
+- [x] recomendação básica orientada por desempenho;
+- [x] histórico visual recente;
+- [ ] aulas estruturadas.
 
 ### v1.4
 
@@ -476,9 +501,9 @@ fix(storage): persist local student progress with file H2
 ### v1.5
 
 - [ ] modo adaptativo;
-- [ ] recomendações de estudo;
+- [ ] recomendações avançadas com múltiplos sinais;
 - [ ] ranking pessoal de pontos fracos;
-- [ ] revisão inteligente.
+- [ ] revisão inteligente com prioridade dinâmica.
 
 ### v2
 
