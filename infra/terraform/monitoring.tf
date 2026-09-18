@@ -1,5 +1,5 @@
 locals {
-  alert_email_enabled = trimspace(var.alert_email) != ""
+  alert_email_enabled = nonsensitive(trimspace(var.alert_email) != "")
   alarm_actions       = local.alert_email_enabled ? [aws_sns_topic.alerts[0].arn] : []
 }
 
