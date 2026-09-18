@@ -2,29 +2,69 @@
 
 Terraform foundation for the SisAWS v2 deployment.
 
-## Architecture
+## Profiles
 
-- CloudFront is the public entry point.
-- A private S3 bucket serves the React SPA through CloudFront OAC.
-- Requests under `/api/*` are forwarded by CloudFront to the Application Load Balancer with caching disabled.
-- The ALB accepts HTTP only from the AWS-managed CloudFront origin-facing prefix list.
-- ECS Fargate runs the Spring Boot API in private subnets.
-- RDS PostgreSQL runs in private subnets and only accepts traffic from ECS.
-- Secrets Manager stores database credentials and the JWT signing value.
-- CloudWatch Logs receives backend container logs.
-- ECR stores backend container images.
+### Dev — cost optimized
 
-## First deployment
+The default `terraform.tfvars.example` intentionally uses:
 
-1. Copy `terraform.tfvars.example` to `terraform.tfvars`.
-2. Run `terraform init`, `terraform fmt -check`, `terraform validate` and `terraform plan`.
+- `use_nat_gateway = false`;
+- ECS Fargate tasks in public subnets with public IPs;
+- backend security group accepting application traffic only from the ALB;
+- RDS PostgreSQL in private subnets;
+- `enable_cloudfront = false`;
+- public S3 website hosting for the React SPA;
+- one day of RDS automated backup retention.
+
+This removes the NAT Gateway from the development environment and allows development to continue while an AWS account is awaiting CloudFront verification.
+
+### Production
+
+`terraform.prod.tfvars.example` enables:
+
+- ECS tasks in private subnets;
+- NAT Gateway for outbound traffic;
+- private S3 bucket behind CloudFront OAC;
+- ALB ingress restricted to the AWS-managed CloudFront origin-facing prefix list;
+- seven days of RDS automated backup retention.
+
+## First dev deployment
+
+1. Copy the dev variables:
+
+   `Copy-Item terraform.tfvars.example terraform.tfvars`
+
+2. Initialize and validate:
+
+   `terraform init`
+   `terraform fmt -check`
+   `terraform validate`
+   `terraform plan`
+
 3. Apply first with `deploy_backend = false`.
-4. Push the backend Docker image to the ECR repository printed by `terraform output backend_ecr_repository_url`.
+
+4. Build and push the backend Docker image to the ECR repository printed by:
+
+   `terraform output backend_ecr_repository_url`
+
 5. Change `deploy_backend = true` and apply again.
-6. Build the frontend with `VITE_API_URL=/api/v1 npm run build`.
-7. Sync `frontend/dist` to the bucket printed by `terraform output frontend_bucket`.
-8. Invalidate CloudFront after publishing a new frontend build.
+
+6. Get the API URL:
+
+   `terraform output -raw api_url`
+
+7. Build the frontend using that URL as `VITE_API_URL`, then sync `frontend/dist` to the S3 bucket from:
+
+   `terraform output -raw frontend_bucket`
+
+8. Open:
+
+   `terraform output -raw frontend_url`
+
+## CloudFront account verification
+
+If AWS returns `Your account must be verified before you can add new CloudFront resources`, keep `enable_cloudfront = false` for dev and open an AWS account/billing support case for verification. After the account is released for CloudFront, use the production profile.
 
 ## Cost note
 
-This baseline creates resources that can generate charges, including RDS, NAT Gateway, Application Load Balancer, CloudFront and Fargate. Review AWS pricing before applying and destroy development resources when they are not needed.
+The development profile removes NAT Gateway charges, but resources such as Application Load Balancer, RDS, public IPv4, Fargate, Secrets Manager and CloudWatch can still generate charges. Destroy lab resources when they are not needed.

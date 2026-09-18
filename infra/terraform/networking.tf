@@ -57,6 +57,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
+  count  = var.use_nat_gateway ? 1 : 0
   domain = "vpc"
 
   tags = {
@@ -65,7 +66,8 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
+  count         = var.use_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
 
   depends_on = [aws_internet_gateway.main]
@@ -98,14 +100,17 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main.id
-  }
-
   tags = {
     Name = "${local.name}-private-rt"
   }
+}
+
+resource "aws_route" "private_internet" {
+  count = var.use_nat_gateway ? 1 : 0
+
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main[0].id
 }
 
 resource "aws_route_table_association" "private" {
@@ -122,8 +127,20 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_from_cloudfront" {
+  count = var.enable_cloudfront ? 1 : 0
+
   security_group_id = aws_security_group.alb.id
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin.id
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_from_internet" {
+  count = var.enable_cloudfront ? 0 : 1
+
+  security_group_id = aws_security_group.alb.id
+  cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
   to_port           = 80
   ip_protocol       = "tcp"

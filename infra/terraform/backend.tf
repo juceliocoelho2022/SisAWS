@@ -60,7 +60,7 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids  = [aws_security_group.database.id]
   publicly_accessible     = false
   multi_az                = false
-  backup_retention_period = 7
+  backup_retention_period = var.db_backup_retention_days
   deletion_protection     = false
   skip_final_snapshot     = true
   apply_immediately       = true
@@ -221,7 +221,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "SISAWS_CORS_ALLOWED_ORIGINS"
-        value = "https://${aws_cloudfront_distribution.app.domain_name}"
+        value = local.frontend_origin
       }
     ]
 
@@ -263,9 +263,9 @@ resource "aws_ecs_service" "backend" {
   health_check_grace_period_seconds = 60
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    subnets          = var.use_nat_gateway ? aws_subnet.private[*].id : aws_subnet.public[*].id
     security_groups  = [aws_security_group.backend.id]
-    assign_public_ip = false
+    assign_public_ip = var.use_nat_gateway ? false : true
   }
 
   load_balancer {
