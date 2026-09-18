@@ -17,3 +17,11 @@ github_branch            = "main"
 # If the account already has token.actions.githubusercontent.com configured,
 # set its ARN here instead of creating another provider.
 github_oidc_provider_arn = ""
+
+# Monitoring and cost guardrails
+monthly_budget_usd         = 25
+alert_email                = ""
+ecs_cpu_alarm_threshold    = 75
+ecs_memory_alarm_threshold = 80
+rds_cpu_alarm_threshold    = 80
+rds_free_storage_alarm_gib = 5
