@@ -100,6 +100,31 @@ resource "aws_iam_role_policy" "github_deploy" {
           "ecs:UpdateService"
         ]
         Resource = aws_ecs_service.backend.id
+      },
+      {
+        Sid      = "DiscoverApplicationLoadBalancer"
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:DescribeLoadBalancers"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ListFrontendBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.frontend.arn
+      },
+      {
+        Sid    = "DeployFrontendObjects"
+        Effect = "Allow"
+        Action = [
+          "s3:DeleteObject",
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.frontend.arn}/*"
       }
     ]
   })
