@@ -20,7 +20,9 @@ A proposta é centralizar:
 - questões por serviço e domínio;
 - correção automática;
 - explicações de respostas;
-- acompanhamento de desempenho;
+- acompanhamento de desempenho por aluno;
+- autenticação com Spring Security + JWT;
+- caderno de erros automático;
 - trilhas de estudo;
 - laboratórios práticos;
 - caderno de erros;
@@ -51,7 +53,27 @@ O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para rece
 - progresso do simulado;
 - correção automática;
 - resultado percentual;
-- explicação individual das respostas.
+- explicação individual das respostas;
+- tentativas vinculadas ao aluno autenticado.
+
+### Autenticação e progresso
+
+- cadastro de aluno;
+- login com e-mail e senha;
+- senhas protegidas com BCrypt;
+- autenticação stateless com JWT;
+- perfil do aluno;
+- dashboard individual;
+- sessão persistida no frontend.
+
+### Caderno de Erros
+
+- registro automático de questões erradas;
+- contador de reincidência por questão;
+- serviço AWS e domínio da certificação;
+- explicação para revisão;
+- data do último erro;
+- dados isolados por aluno.
 
 ### Temas da interface
 
@@ -132,6 +154,9 @@ CI/CD           → GitHub Actions
 | Spring Web | API REST |
 | Spring Data JPA | persistência |
 | Hibernate | ORM |
+| Spring Security | autenticação e autorização |
+| JWT / JJWT | tokens stateless |
+| BCrypt | proteção de senhas |
 | Bean Validation | validação |
 | Spring Boot Actuator | health e observabilidade básica |
 | Maven | build e dependências |
@@ -192,10 +217,14 @@ CI/CD           → GitHub Actions
 SisAWS/
 ├── backend/
 │   ├── src/main/java/br/com/sisaws/
+│   │   ├── auth/
 │   │   ├── certification/
 │   │   ├── dashboard/
+│   │   ├── errornotebook/
 │   │   ├── question/
-│   │   └── simulation/
+│   │   ├── security/
+│   │   ├── simulation/
+│   │   └── user/
 │   ├── src/main/resources/
 │   └── pom.xml
 │
@@ -306,8 +335,12 @@ SPRING_PROFILES_ACTIVE=postgres
 
 | Método | Endpoint | Responsabilidade |
 |---|---|---|
+| POST | `/api/v1/auth/register` | cadastrar aluno |
+| POST | `/api/v1/auth/login` | autenticar e emitir JWT |
+| GET | `/api/v1/auth/me` | perfil autenticado |
 | GET | `/api/v1/certifications` | listar certificações |
-| GET | `/api/v1/dashboard` | indicadores do dashboard |
+| GET | `/api/v1/dashboard` | indicadores individuais |
+| GET | `/api/v1/error-notebook` | caderno de erros do aluno |
 | GET | `/api/v1/questions?certification=SAA-C03&limit=10` | carregar questões |
 | POST | `/api/v1/simulations/finish` | finalizar e corrigir simulado |
 | GET | `/api/v1/simulations/history` | histórico de tentativas |
@@ -389,6 +422,10 @@ ci(github): add backend and frontend pipelines
 feat: estrutura inicial SisAWS
 feat(ui): add theme selector and fullscreen layout
 docs(readme): professionalize project documentation
+feat(auth): add Spring Security and JWT authentication
+feat(progress): link attempts and error notebook to students
+feat(web): add student login and error notebook experience
+docs(readme): document v1.2 authentication and progress
 ```
 
 ---
@@ -407,11 +444,15 @@ docs(readme): professionalize project documentation
 
 ### v1.2
 
-- [ ] autenticação;
-- [ ] Spring Security;
-- [ ] JWT;
-- [ ] usuários e perfis;
-- [ ] caderno de erros.
+- [x] cadastro e login;
+- [x] Spring Security;
+- [x] JWT;
+- [x] BCrypt;
+- [x] usuários e perfis;
+- [x] progresso por aluno;
+- [x] histórico de tentativas por usuário;
+- [x] caderno de erros automático;
+- [x] contador de reincidência de erros.
 
 ### v1.3
 
@@ -486,3 +527,5 @@ GitHub: **@juceliocoelho2022**
 ---
 
 > **SisAWS — Estude. Pratique. Evolua.**
+
+O SisAWS é um projeto educacional independente e não é afiliado, patrocinado ou endossado pela Amazon Web Services.
