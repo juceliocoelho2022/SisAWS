@@ -49,6 +49,12 @@ export type SimulationResult = {
   results: ResultItem[]
 }
 
+export type AnswerCheck = {
+  correct: boolean
+  explanation: string
+  correctOptionIds: number[]
+}
+
 export type ErrorNotebookEntry = {
   id: number
   questionId: number
@@ -184,6 +190,13 @@ export function getQuestions(limit = 10, service = '', difficulty = ''): Promise
   if (difficulty) params.set('difficulty', difficulty)
 
   return request<Question[]>(`/questions?${params.toString()}`)
+}
+
+export function checkAnswer(questionId: number, selectedOptionIds: number[]): Promise<AnswerCheck> {
+  return request<AnswerCheck>(`/questions/${questionId}/check`, {
+    method: 'POST',
+    body: JSON.stringify({selectedOptionIds})
+  })
 }
 
 export function getErrorNotebook(): Promise<ErrorNotebookEntry[]> {

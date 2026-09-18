@@ -7,7 +7,10 @@ import {
   Brain,
   Cloud,
   CheckCircle2,
+  Clock3,
+  Flag,
   Gauge,
+  GraduationCap,
   History,
   Lightbulb,
   LogOut,
@@ -16,9 +19,11 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Target,
-  UserCircle
+  UserCircle,
+  XCircle
 } from 'lucide-react'
 import {
+  AnswerCheck,
   AuthUser,
   Dashboard,
   Difficulty,
@@ -30,6 +35,7 @@ import {
   ServiceProgress,
   SimulationResult,
   StudyTrail,
+  checkAnswer,
   clearSession,
   finishSimulation,
   getDashboard,
@@ -48,9 +54,12 @@ import {
 
 type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress'
 type Theme = 'light' | 'moderate' | 'dark'
+type SimulationMode = 'study' | 'exam'
 
 const THEME_KEY = 'sisaws-theme'
 const SERVICES = ['', 'IAM', 'VPC', 'EC2', 'Auto Scaling', 'S3', 'CloudFront', 'RDS', 'DynamoDB', 'SQS', 'KMS', 'Route 53']
+const EXAM_DURATION_SECONDS = 130 * 60
+
 const DIFFICULTIES: {value: '' | Difficulty; label: string}[] = [
   {value: '', label: 'Todas'},
   {value: 'EASY', label: 'Fácil'},
@@ -81,14 +90,21 @@ export default function App() {
   const [revealedCards, setRevealedCards] = useState<Set<number>>(new Set())
   const [simulationService, setSimulationService] = useState('')
   const [simulationDifficulty, setSimulationDifficulty] = useState<'' | Difficulty>('')
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>('study')
+  const [questionLimit, setQuestionLimit] = useState(10)
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [studyFeedback, setStudyFeedback] = useState<Record<number, AnswerCheck>>({})
+  const [reviewQuestionIds, setReviewQuestionIds] = useState<Set<number>>(new Set())
+  const [secondsRemaining, setSecondsRemaining] = useState(EXAM_DURATION_SECONDS)
+  const [finishing, setFinishing] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [error, setError] = useState('')
 
   const current = questions[index]
   const answered = Object.keys(answers).length
   const progress = questions.length ? Math.round((answered / questions.length) * 100) : 0
+  const currentFeedback = current ? studyFeedback[current.id] : undefined
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -112,6 +128,28 @@ export default function App() {
     if (user) refreshDashboard()
   }, [user])
 
+  useEffect(() => {
+    if (simulationMode !== 'exam' || questions.length === 0 || result || finishing) return
+
+    const timer = window.setInterval(() => {
+      setSecondsRemaining(previous => Math.max(0, previous - 1))
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [simulationMode, questions.length, result, finishing])
+
+  useEffect(() => {
+    if (
+      simulationMode === 'exam'
+      && questions.length > 0
+      && secondsRemaining === 0
+      && !result
+      && !finishing
+    ) {
+      void finish(true)
+    }
+  }, [secondsRemaining, simulationMode, questions.length, result, finishing])
+
   async function refreshDashboard() {
     try {
       const [dashboardResponse, recommendationResponse] = await Promise.all([
@@ -131,7 +169,10 @@ export default function App() {
     setSimulationDifficulty(difficulty)
     setQuestions([])
     setAnswers({})
+    setStudyFeedback({})
+    setReviewQuestionIds(new Set())
     setIndex(0)
+    setSecondsRemaining(EXAM_DURATION_SECONDS)
     setResult(null)
     setPage('simulation')
     setError('')
@@ -139,7 +180,7 @@ export default function App() {
 
   async function startSimulation(service = simulationService, difficulty = simulationDifficulty) {
     try {
-      const loaded = await getQuestions(10, service, difficulty)
+      const loaded = await getQuestions(questionLimit, service, difficulty)
 
       if (loaded.length === 0) {
         setError('Nenhuma questão encontrada para estes filtros. Tente outro serviço ou dificuldade.')
@@ -150,7 +191,10 @@ export default function App() {
       setSimulationDifficulty(difficulty)
       setQuestions(loaded)
       setAnswers({})
+      setStudyFeedback({})
+      setReviewQuestionIds(new Set())
       setIndex(0)
+      setSecondsRemaining(EXAM_DURATION_SECONDS)
       setResult(null)
       setPage('simulation')
       setError('')
@@ -205,13 +249,39 @@ export default function App() {
     }
   }
 
-  async function finish() {
-    if (answered !== questions.length) return
+  async function selectAnswer(optionId: number) {
+    if (!current) return
+
+    setAnswers(previous => ({...previous, [current.id]: optionId}))
+
+    if (simulationMode === 'study') {
+      try {
+        const feedback = await checkAnswer(current.id, [optionId])
+        setStudyFeedback(previous => ({...previous, [current.id]: feedback}))
+      } catch {
+        setError('Não foi possível verificar esta resposta.')
+      }
+    }
+  }
+
+  function toggleReview(questionId: number) {
+    setReviewQuestionIds(previous => {
+      const next = new Set(previous)
+      if (next.has(questionId)) next.delete(questionId)
+      else next.add(questionId)
+      return next
+    })
+  }
+
+  async function finish(force = false) {
+    if (!force && simulationMode === 'study' && answered !== questions.length) return
+
+    setFinishing(true)
 
     try {
       const payload = questions.map(q => ({
         questionId: q.id,
-        selectedOptionIds: [answers[q.id]]
+        selectedOptionIds: answers[q.id] ? [answers[q.id]] : []
       }))
 
       const response = await finishSimulation(payload)
@@ -219,6 +289,8 @@ export default function App() {
       await refreshDashboard()
     } catch {
       setError('Não foi possível corrigir o simulado.')
+    } finally {
+      setFinishing(false)
     }
   }
 
@@ -242,6 +314,8 @@ export default function App() {
     setFlashcards([])
     setServiceProgress([])
     setHistory([])
+    setStudyFeedback({})
+    setReviewQuestionIds(new Set())
     setResult(null)
     setPage('dashboard')
     setError('')
@@ -362,7 +436,26 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="filter-grid">
+              <div className="mode-grid">
+                <button
+                  className={simulationMode === 'study' ? 'mode-card active' : 'mode-card'}
+                  onClick={() => setSimulationMode('study')}
+                >
+                  <GraduationCap size={24}/>
+                  <strong>Modo Estudo</strong>
+                  <span>Feedback imediato, resposta correta e explicação após cada escolha.</span>
+                </button>
+                <button
+                  className={simulationMode === 'exam' ? 'mode-card active' : 'mode-card'}
+                  onClick={() => setSimulationMode('exam')}
+                >
+                  <Clock3 size={24}/>
+                  <strong>Modo Prova</strong>
+                  <span>Sem revelar a correção durante a prova e com cronômetro de 130 minutos.</span>
+                </button>
+              </div>
+
+              <div className="filter-grid three-filters">
                 <label>
                   Serviço AWS
                   <select value={simulationService} onChange={event => setSimulationService(event.target.value)}>
@@ -376,12 +469,27 @@ export default function App() {
                     {DIFFICULTIES.map(item => <option value={item.value} key={item.value || 'all'}>{item.label}</option>)}
                   </select>
                 </label>
+
+                <label>
+                  Questões
+                  <select value={questionLimit} onChange={event => setQuestionLimit(Number(event.target.value))}>
+                    <option value={5}>5 questões</option>
+                    <option value={10}>10 questões</option>
+                    <option value={65}>Banco completo (até 65)</option>
+                  </select>
+                </label>
               </div>
 
-              <div className="setup-summary">
+              <div className="exam-reference">
+                <Clock3 size={17}/>
+                <span>Referência atual do SAA-C03: 65 questões em 130 minutos. O SisAWS usa somente as questões autorais disponíveis no banco atual.</span>
+              </div>
+
+              <div className="setup-summary four-summary">
+                <div><span>Modo</span><strong>{simulationMode === 'study' ? 'Estudo' : 'Prova'}</strong></div>
                 <div><span>Certificação</span><strong>SAA-C03</strong></div>
                 <div><span>Serviço</span><strong>{simulationService || 'Misto'}</strong></div>
-                <div><span>Dificuldade</span><strong>{DIFFICULTIES.find(item => item.value === simulationDifficulty)?.label}</strong></div>
+                <div><span>Questões solicitadas</span><strong>{questionLimit === 65 ? 'Banco completo' : questionLimit}</strong></div>
               </div>
 
               <button className="primary setup-start" onClick={() => startSimulation()}>
@@ -395,34 +503,91 @@ export default function App() {
           <div className="page-content simulation-content">
             <section className="quiz-card">
               <div className="quiz-top">
-                <div><span className="pill">{current.awsService}</span><span className="difficulty">{current.difficulty}</span></div>
-                <strong>{index + 1} / {questions.length}</strong>
+                <div className="quiz-labels">
+                  <span className="pill">{current.awsService}</span>
+                  <span className="difficulty">{current.difficulty}</span>
+                  <span className="mode-pill">{simulationMode === 'study' ? 'ESTUDO' : 'PROVA'}</span>
+                </div>
+                <div className="quiz-meta">
+                  {simulationMode === 'exam' && (
+                    <span className={secondsRemaining <= 600 ? 'exam-timer warning' : 'exam-timer'}>
+                      <Clock3 size={16}/> {formatTime(secondsRemaining)}
+                    </span>
+                  )}
+                  <button
+                    className={reviewQuestionIds.has(current.id) ? 'review-flag active' : 'review-flag'}
+                    onClick={() => toggleReview(current.id)}
+                  >
+                    <Flag size={16}/> {reviewQuestionIds.has(current.id) ? 'Marcada' : 'Revisar'}
+                  </button>
+                  <strong>{index + 1} / {questions.length}</strong>
+                </div>
               </div>
               <div className="progress"><span style={{width: `${progress}%`}} /></div>
               <p className="domain">{current.domain}</p>
               <h2>{current.prompt}</h2>
               <div className="options">
-                {current.options.map((option, optionIndex) => (
-                  <button
-                    key={option.id}
-                    className={answers[current.id] === option.id ? 'selected' : ''}
-                    onClick={() => setAnswers({...answers, [current.id]: option.id})}
-                  >
-                    <b>{String.fromCharCode(65 + optionIndex)}</b>
-                    <span className="option-text">{option.text}</span>
-                    {answers[current.id] === option.id && (
-                      <span className="selected-check" aria-label="Resposta selecionada">
-                        <CheckCircle2 size={21}/>
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {current.options.map((option, optionIndex) => {
+                  const selected = answers[current.id] === option.id
+                  const correctOption = simulationMode === 'study'
+                    && currentFeedback?.correctOptionIds.includes(option.id)
+                  const wrongSelected = simulationMode === 'study'
+                    && Boolean(currentFeedback)
+                    && selected
+                    && !currentFeedback?.correct
+
+                  const classes = [
+                    selected ? 'selected' : '',
+                    correctOption ? 'correct-option' : '',
+                    wrongSelected ? 'wrong-option' : ''
+                  ].filter(Boolean).join(' ')
+
+                  return (
+                    <button
+                      key={option.id}
+                      className={classes}
+                      onClick={() => selectAnswer(option.id)}
+                    >
+                      <b>{String.fromCharCode(65 + optionIndex)}</b>
+                      <span className="option-text">{option.text}</span>
+                      {correctOption ? (
+                        <span className="selected-check correct-check" aria-label="Resposta correta">
+                          <CheckCircle2 size={21}/>
+                        </span>
+                      ) : wrongSelected ? (
+                        <span className="selected-check wrong-check" aria-label="Resposta incorreta">
+                          <XCircle size={21}/>
+                        </span>
+                      ) : selected ? (
+                        <span className="selected-check" aria-label="Resposta selecionada">
+                          <CheckCircle2 size={21}/>
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
               </div>
+
+              {simulationMode === 'study' && currentFeedback && (
+                <div className={currentFeedback.correct ? 'study-feedback correct' : 'study-feedback incorrect'}>
+                  <div>
+                    {currentFeedback.correct ? <CheckCircle2 size={21}/> : <XCircle size={21}/>}
+                    <strong>{currentFeedback.correct ? 'Resposta correta' : 'Resposta incorreta'}</strong>
+                  </div>
+                  <p>{currentFeedback.explanation}</p>
+                </div>
+              )}
               <div className="quiz-actions">
                 <button disabled={index === 0} onClick={() => setIndex(index - 1)}>Anterior</button>
                 {index < questions.length - 1
                   ? <button className="primary" onClick={() => setIndex(index + 1)}>Próxima</button>
-                  : <button className="primary" disabled={answered !== questions.length} onClick={finish}>Finalizar simulado</button>}
+                  : <button
+                      className="primary"
+                      disabled={finishing || (simulationMode === 'study' && answered !== questions.length)}
+                      onClick={() => finish(false)}
+                    >
+                      {finishing ? 'Finalizando...' : 'Finalizar simulado'}
+                    </button>}
               </div>
             </section>
           </div>
@@ -435,6 +600,9 @@ export default function App() {
               <div className="score">{result.scorePercent}%</div>
               <h2>{result.correctAnswers} de {result.totalQuestions} questões corretas</h2>
               <p>Seu progresso por serviço foi atualizado e os erros foram enviados para o Caderno de Erros.</p>
+              {reviewQuestionIds.size > 0 && (
+                <div className="review-summary"><Flag size={17}/> {reviewQuestionIds.size} questão(ões) foram marcadas para revisão durante esta tentativa.</div>
+              )}
               <div className="review-list">
                 {questions.map((question, questionIndex) => {
                   const item = resultMap.get(question.id)
@@ -691,4 +859,11 @@ function AuthScreen({
 
 function Metric({label, value, suffix = ''}: {label: string; value: number; suffix?: string}) {
   return <div className="metric"><span>{label}</span><strong>{value}{suffix}</strong></div>
+}
+
+
+function formatTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
