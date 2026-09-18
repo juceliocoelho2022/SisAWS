@@ -1,6 +1,7 @@
 name: SisAWS CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
   pull_request:
@@ -96,7 +97,7 @@ jobs:
 
   deploy-backend:
     name: Deploy backend - AWS ECS
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SISAWS_AWS_DEPLOY_ENABLED == 'true'
+    if: vars.SISAWS_AWS_DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     needs: [backend, frontend, infrastructure]
     runs-on: ubuntu-latest
 
