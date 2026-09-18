@@ -1,0 +1,48 @@
+package br.com.sisaws.question;
+
+import org.springframework.web.bind.annotation.*;
+import java.util.Collections;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/questions")
+@CrossOrigin(origins = "http://localhost:5173")
+public class QuestionController {
+    private final QuestionRepository repository;
+
+    public QuestionController(QuestionRepository repository) {
+        this.repository = repository;
+    }
+
+    @GetMapping
+    public List<QuestionResponse> list(
+            @RequestParam(defaultValue = "SAA-C03") String certification,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        var questions = repository.findByCertification_CodeIgnoreCase(certification);
+        Collections.shuffle(questions);
+
+        return questions.stream()
+                .limit(Math.max(1, Math.min(limit, 65)))
+                .map(QuestionResponse::from)
+                .toList();
+    }
+
+    public record OptionResponse(Long id, String text) {}
+
+    public record QuestionResponse(
+            Long id,
+            String domain,
+            String awsService,
+            Difficulty difficulty,
+            String prompt,
+            List<OptionResponse> options) {
+
+        static QuestionResponse from(Question q) {
+            return new QuestionResponse(
+                    q.getId(), q.getDomain(), q.getAwsService(), q.getDifficulty(), q.getPrompt(),
+                    q.getOptions().stream().map(o -> new OptionResponse(o.getId(), o.getText())).toList()
+            );
+        }
+    }
+}
