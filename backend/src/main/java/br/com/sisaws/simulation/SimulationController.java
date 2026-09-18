@@ -52,7 +52,9 @@ public class SimulationController {
                     .filter(option -> option.isCorrect())
                     .map(option -> option.getId())
                     .toList());
-            Set<Long> selected = new HashSet<>(answer.selectedOptionIds());
+            Set<Long> selected = answer.selectedOptionIds() == null
+                    ? Set.of()
+                    : new HashSet<>(answer.selectedOptionIds());
             boolean isCorrect = expected.equals(selected);
 
             registerServiceProgress(user, question, isCorrect);
@@ -120,7 +122,7 @@ public class SimulationController {
         errorNotebookRepository.save(entry);
     }
 
-    public record AnswerRequest(Long questionId, @NotEmpty List<Long> selectedOptionIds) {}
+    public record AnswerRequest(Long questionId, List<Long> selectedOptionIds) {}
 
     public record FinishSimulationRequest(
             @NotBlank String certificationCode,

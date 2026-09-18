@@ -3,7 +3,9 @@ package br.com.sisaws.question;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/questions")
@@ -34,6 +36,39 @@ public class QuestionController {
                 .map(QuestionResponse::from)
                 .toList();
     }
+
+    @PostMapping("/{id}/check")
+    public AnswerCheckResponse check(@PathVariable Long id,
+                                     @RequestBody AnswerCheckRequest request) {
+        Question question = repository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND,
+                        "Questão não encontrada"
+                ));
+
+        Set<Long> expected = new HashSet<>(question.getOptions().stream()
+                .filter(AnswerOption::isCorrect)
+                .map(AnswerOption::getId)
+                .toList());
+
+        Set<Long> selected = request.selectedOptionIds() == null
+                ? Set.of()
+                : new HashSet<>(request.selectedOptionIds());
+
+        return new AnswerCheckResponse(
+                expected.equals(selected),
+                question.getExplanation(),
+                expected.stream().toList()
+        );
+    }
+
+    public record AnswerCheckRequest(List<Long> selectedOptionIds) {}
+
+    public record AnswerCheckResponse(
+            boolean correct,
+            String explanation,
+            List<Long> correctOptionIds
+    ) {}
 
     public record OptionResponse(Long id, String text) {}
 
