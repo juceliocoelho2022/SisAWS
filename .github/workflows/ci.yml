@@ -16,10 +16,11 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect backend changes
+    name: Detect deploy changes
     runs-on: ubuntu-24.04
     outputs:
-      backend: ${{ steps.backend.outputs.changed }}
+      backend: ${{ steps.detect.outputs.backend }}
+      frontend: ${{ steps.detect.outputs.frontend }}
 
     steps:
       - name: Checkout
@@ -27,26 +28,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect backend changes
-        id: backend
+      - name: Detect deploy changes
+        id: detect
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            changed=true
+            backend=true
+            frontend=true
           elif [ "$EVENT_NAME" != "push" ]; then
-            changed=false
+            backend=false
+            frontend=false
           elif [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            changed=true
-          elif git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- backend; then
-            changed=false
+            backend=true
+            frontend=true
           else
-            changed=true
+            if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- backend; then
+              backend=false
+            else
+              backend=true
+            fi
+
+            if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- frontend infra/terraform/frontend.tf infra/terraform/backend.tf; then
+              frontend=false
+            else
+              frontend=true
+            fi
           fi
 
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
 
 
   backend:
@@ -197,3 +210,71 @@ jobs:
             --region "$AWS_REGION" \
             --query "services[0].{Status:status,Desired:desiredCount,Running:runningCount,Pending:pendingCount}" \
             --output table
+
+  deploy-frontend:
+    name: Deploy frontend - AWS S3
+    if: vars.SISAWS_AWS_DEPLOY_ENABLED == 'true' && needs.changes.outputs.frontend == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    needs: [changes, backend, frontend, infrastructure]
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: ${{ vars.SISAWS_AWS_REGION }}
+      ALB_NAME: sisaws-dev-api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.SISAWS_AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: sisaws-github-frontend
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve AWS deployment endpoints
+        id: aws
+        shell: bash
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="sisaws-dev-web-$ACCOUNT_ID"
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names "$ALB_NAME" \
+            --region "$AWS_REGION" \
+            --query "LoadBalancers[0].DNSName" \
+            --output text)
+
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "api_url=http://$ALB_DNS/api/v1" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=http://$BUCKET.s3-website-$AWS_REGION.amazonaws.com" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build production frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ steps.aws.outputs.api_url }}
+        run: npm run build
+
+      - name: Sync frontend to S3
+        run: |
+          aws s3 sync frontend/dist "s3://${{ steps.aws.outputs.bucket }}" \
+            --delete \
+            --region "$AWS_REGION"
+
+      - name: Show frontend URL
+        run: echo "Frontend deployed to ${{ steps.aws.outputs.frontend_url }}"
+
