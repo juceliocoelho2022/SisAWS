@@ -1,12 +1,12 @@
 package br.com.sisaws.question;
 
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Collections;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/questions")
-@CrossOrigin(origins = "http://localhost:5173")
 public class QuestionController {
     private final QuestionRepository repository;
 
@@ -17,9 +17,16 @@ public class QuestionController {
     @GetMapping
     public List<QuestionResponse> list(
             @RequestParam(defaultValue = "SAA-C03") String certification,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String service,
+            @RequestParam(required = false) Difficulty difficulty) {
 
-        var questions = repository.findByCertification_CodeIgnoreCase(certification);
+        List<Question> questions = repository.findByCertification_CodeIgnoreCase(certification).stream()
+                .filter(question -> service == null || service.isBlank()
+                        || question.getAwsService().equalsIgnoreCase(service))
+                .filter(question -> difficulty == null || question.getDifficulty() == difficulty)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+
         Collections.shuffle(questions);
 
         return questions.stream()
@@ -40,8 +47,14 @@ public class QuestionController {
 
         static QuestionResponse from(Question q) {
             return new QuestionResponse(
-                    q.getId(), q.getDomain(), q.getAwsService(), q.getDifficulty(), q.getPrompt(),
-                    q.getOptions().stream().map(o -> new OptionResponse(o.getId(), o.getText())).toList()
+                    q.getId(),
+                    q.getDomain(),
+                    q.getAwsService(),
+                    q.getDifficulty(),
+                    q.getPrompt(),
+                    q.getOptions().stream()
+                            .map(option -> new OptionResponse(option.getId(), option.getText()))
+                            .toList()
             );
         }
     }

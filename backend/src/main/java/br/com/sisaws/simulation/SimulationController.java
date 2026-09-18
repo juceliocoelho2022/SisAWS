@@ -2,6 +2,8 @@ package br.com.sisaws.simulation;
 
 import br.com.sisaws.errornotebook.ErrorNotebookEntry;
 import br.com.sisaws.errornotebook.ErrorNotebookRepository;
+import br.com.sisaws.learning.ServiceProgress;
+import br.com.sisaws.learning.ServiceProgressRepository;
 import br.com.sisaws.question.Question;
 import br.com.sisaws.question.QuestionRepository;
 import br.com.sisaws.user.AppUser;
@@ -21,13 +23,16 @@ public class SimulationController {
     private final QuestionRepository questionRepository;
     private final SimulationAttemptRepository attemptRepository;
     private final ErrorNotebookRepository errorNotebookRepository;
+    private final ServiceProgressRepository serviceProgressRepository;
 
     public SimulationController(QuestionRepository questionRepository,
                                 SimulationAttemptRepository attemptRepository,
-                                ErrorNotebookRepository errorNotebookRepository) {
+                                ErrorNotebookRepository errorNotebookRepository,
+                                ServiceProgressRepository serviceProgressRepository) {
         this.questionRepository = questionRepository;
         this.attemptRepository = attemptRepository;
         this.errorNotebookRepository = errorNotebookRepository;
+        this.serviceProgressRepository = serviceProgressRepository;
     }
 
     @PostMapping("/finish")
@@ -44,11 +49,13 @@ public class SimulationController {
 
             Question question = optional.get();
             Set<Long> expected = new HashSet<>(question.getOptions().stream()
-                    .filter(o -> o.isCorrect())
-                    .map(o -> o.getId())
+                    .filter(option -> option.isCorrect())
+                    .map(option -> option.getId())
                     .toList());
             Set<Long> selected = new HashSet<>(answer.selectedOptionIds());
             boolean isCorrect = expected.equals(selected);
+
+            registerServiceProgress(user, question, isCorrect);
 
             if (isCorrect) {
                 correct++;
@@ -61,8 +68,8 @@ public class SimulationController {
                     isCorrect,
                     question.getExplanation(),
                     question.getOptions().stream()
-                            .filter(o -> o.isCorrect())
-                            .map(o -> o.getId())
+                            .filter(option -> option.isCorrect())
+                            .map(option -> option.getId())
                             .toList()
             ));
         }
@@ -82,15 +89,24 @@ public class SimulationController {
         AppUser user = (AppUser) authentication.getPrincipal();
 
         return attemptRepository.findTop10ByUserOrderByFinishedAtDesc(user).stream()
-                .map(a -> new HistoryResponse(
-                        a.getId(),
-                        a.getCertificationCode(),
-                        a.getTotalQuestions(),
-                        a.getCorrectAnswers(),
-                        a.getScorePercent(),
-                        a.getFinishedAt().toString()
+                .map(attempt -> new HistoryResponse(
+                        attempt.getId(),
+                        attempt.getCertificationCode(),
+                        attempt.getTotalQuestions(),
+                        attempt.getCorrectAnswers(),
+                        attempt.getScorePercent(),
+                        attempt.getFinishedAt().toString()
                 ))
                 .toList();
+    }
+
+    private void registerServiceProgress(AppUser user, Question question, boolean correct) {
+        ServiceProgress progress = serviceProgressRepository
+                .findByUserAndAwsServiceIgnoreCase(user, question.getAwsService())
+                .orElseGet(() -> new ServiceProgress(user, question.getAwsService()));
+
+        progress.recordAnswer(correct);
+        serviceProgressRepository.save(progress);
     }
 
     private void registerError(AppUser user, Question question) {
