@@ -2,13 +2,13 @@ spring:
   application:
     name: sisaws-api
   datasource:
-    url: jdbc:h2:mem:sisaws;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    url: jdbc:h2:file:./data/sisaws;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;AUTO_SERVER=TRUE
     username: sa
     password:
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     open-in-view: false
   h2:
     console:

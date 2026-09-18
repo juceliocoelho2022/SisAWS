@@ -175,7 +175,7 @@ CI/CD           → GitHub Actions
 
 | Tecnologia | Uso |
 |---|---|
-| H2 | desenvolvimento local rápido |
+| H2 | desenvolvimento local persistente |
 | PostgreSQL 17 | banco relacional principal |
 | JPA / Hibernate | mapeamento objeto-relacional |
 
@@ -296,9 +296,11 @@ http://localhost:8080/h2-console
 Credenciais locais:
 
 ```text
-JDBC URL: jdbc:h2:mem:sisaws
+JDBC URL: jdbc:h2:file:./data/sisaws
 User: sa
 Password:
+
+Os dados locais ficam persistidos no diretório `data/`, que é ignorado pelo Git. Assim, usuários, simulados e caderno de erros sobrevivem às reinicializações do backend.
 ```
 
 ### Frontend
@@ -426,6 +428,7 @@ feat(auth): add Spring Security and JWT authentication
 feat(progress): link attempts and error notebook to students
 feat(web): add student login and error notebook experience
 docs(readme): document v1.2 authentication and progress
+fix(storage): persist local student progress with file H2
 ```
 
 ---
