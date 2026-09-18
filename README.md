@@ -55,7 +55,30 @@ O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para rece
 - correção automática;
 - resultado percentual;
 - explicação individual das respostas;
-- tentativas vinculadas ao aluno autenticado.
+- tentativas vinculadas ao aluno autenticado;
+- confirmação visual da alternativa selecionada com destaque e check;
+- filtro por serviço AWS e dificuldade;
+- quantidade configurável de questões.
+
+### Modo Estudo e Modo Prova
+
+**Modo Estudo**
+
+- validação imediata da resposta;
+- alternativa correta destacada em verde;
+- resposta incorreta destacada em vermelho;
+- explicação exibida logo após responder;
+- ideal para aprendizagem guiada.
+
+**Modo Prova**
+
+- não revela a correção durante a tentativa;
+- cronômetro de 130 minutos;
+- marcação de questões para revisão;
+- permite finalizar com questões não respondidas;
+- questões não respondidas entram como incorretas;
+- usa como referência o formato atual do SAA-C03: 65 questões em 130 minutos;
+- utiliza apenas o banco autoral disponível no SisAWS, sem simular questões inexistentes.
 
 ### Autenticação e progresso
 
@@ -363,6 +386,7 @@ SPRING_PROFILES_ACTIVE=postgres
 | GET | `/api/v1/learning/flashcards` | flashcards |
 | GET | `/api/v1/questions?certification=SAA-C03&limit=10` | carregar questões |
 | GET | `/api/v1/questions?...&service=S3&difficulty=MEDIUM` | simulado filtrado |
+| POST | `/api/v1/questions/{id}/check` | validar resposta no Modo Estudo |
 | POST | `/api/v1/simulations/finish` | finalizar, corrigir e atualizar analytics |
 | GET | `/api/v1/simulations/history` | histórico de tentativas |
 | GET | `/actuator/health` | health check |
@@ -451,6 +475,10 @@ fix(storage): persist local student progress with file H2
 feat(learning): add service analytics trails and flashcards
 feat(web): add trails flashcards and learning analytics
 docs(readme): document v1.3 learning experience
+feat(simulation): confirm selected answer with green check
+feat(simulation): add study mode answer checking
+feat(exam): add study and exam modes with timer and review flags
+docs(readme): document v1.4 exam experience
 ```
 
 ---
@@ -492,9 +520,14 @@ docs(readme): document v1.3 learning experience
 
 ### v1.4
 
-- [ ] simulado SAA-C03 com 65 questões;
-- [ ] cronômetro;
-- [ ] marcar para revisão;
+- [x] Modo Estudo;
+- [x] feedback imediato por resposta;
+- [x] Modo Prova;
+- [x] cronômetro de 130 minutos;
+- [x] marcar questão para revisão;
+- [x] finalizar prova com questões não respondidas;
+- [x] seleção visual com check;
+- [ ] ampliar banco autoral para 65 questões;
 - [ ] análise por domínio;
 - [ ] histórico detalhado.
 
@@ -557,3 +590,5 @@ GitHub: **@juceliocoelho2022**
 > **SisAWS — Estude. Pratique. Evolua.**
 
 O SisAWS é um projeto educacional independente e não é afiliado, patrocinado ou endossado pela Amazon Web Services.
+
+Referência do formato do exame: a página oficial da AWS informa atualmente 65 questões e duração de 130 minutos para o AWS Certified Solutions Architect – Associate.
