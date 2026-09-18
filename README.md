@@ -27,8 +27,10 @@ A proposta é centralizar:
 - progresso por serviço AWS;
 - flashcards;
 - recomendações orientadas por desempenho;
+- ranking de pontos fracos;
+- revisão inteligente;
+- prática adaptativa;
 - laboratórios práticos;
-- modo adaptativo;
 - histórico de evolução.
 
 O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para receber novas certificações e novos módulos.
@@ -110,6 +112,25 @@ O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para rece
 - recomendação automática do próximo serviço a estudar;
 - histórico visual das últimas tentativas;
 - simulados filtrados por serviço e dificuldade.
+
+### Revisão Inteligente e Modo Adaptativo
+
+O SisAWS calcula uma prioridade de revisão de 0 a 100 combinando:
+
+- taxa de acerto por serviço;
+- quantidade de respostas disponíveis;
+- reincidência de erros no Caderno de Erros.
+
+A plataforma gera:
+
+- ranking dos serviços que mais precisam de atenção;
+- nível geral de aprendizagem;
+- serviço prioritário;
+- dificuldade sugerida;
+- quantidade sugerida de questões;
+- sessão adaptativa iniciada diretamente em Modo Estudo.
+
+A regra é determinística e transparente: o sistema não apresenta a recomendação como inteligência artificial ou previsão probabilística.
 
 ### Temas da interface
 
@@ -258,6 +279,9 @@ SisAWS/
 │   │   ├── dashboard/
 │   │   ├── errornotebook/
 │   │   ├── learning/
+│   │   │   ├── AdaptiveLearningController.java
+│   │   │   ├── LearningController.java
+│   │   │   └── ServiceProgress.java
 │   │   ├── question/
 │   │   ├── security/
 │   │   ├── simulation/
@@ -382,6 +406,7 @@ SPRING_PROFILES_ACTIVE=postgres
 | GET | `/api/v1/error-notebook` | caderno de erros do aluno |
 | GET | `/api/v1/learning/progress` | desempenho por serviço AWS |
 | GET | `/api/v1/learning/recommendation` | recomendação de estudo |
+| GET | `/api/v1/learning/adaptive/plan` | plano adaptativo e ranking de prioridades |
 | GET | `/api/v1/learning/trails` | trilhas AWS |
 | GET | `/api/v1/learning/flashcards` | flashcards |
 | GET | `/api/v1/questions?certification=SAA-C03&limit=10` | carregar questões |
@@ -479,6 +504,9 @@ feat(simulation): confirm selected answer with green check
 feat(simulation): add study mode answer checking
 feat(exam): add study and exam modes with timer and review flags
 docs(readme): document v1.4 exam experience
+feat(adaptive): add personalized learning plan engine
+feat(web): add smart review and adaptive practice
+docs(readme): document v1.5 adaptive learning
 ```
 
 ---
@@ -533,10 +561,14 @@ docs(readme): document v1.4 exam experience
 
 ### v1.5
 
-- [ ] modo adaptativo;
-- [ ] recomendações avançadas com múltiplos sinais;
-- [ ] ranking pessoal de pontos fracos;
-- [ ] revisão inteligente com prioridade dinâmica.
+- [x] modo adaptativo;
+- [x] recomendação com múltiplos sinais;
+- [x] ranking pessoal de pontos fracos;
+- [x] score de prioridade de 0 a 100;
+- [x] revisão inteligente;
+- [x] sessão adaptativa em Modo Estudo;
+- [x] dificuldade sugerida automaticamente;
+- [ ] histórico da evolução do score adaptativo ao longo do tempo.
 
 ### v2
 
