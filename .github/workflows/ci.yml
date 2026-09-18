@@ -10,7 +10,45 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sisaws-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    name: Detect backend changes
+    runs-on: ubuntu-24.04
+    outputs:
+      backend: ${{ steps.backend.outputs.changed }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect backend changes
+        id: backend
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            changed=true
+          elif [ "$EVENT_NAME" != "push" ]; then
+            changed=false
+          elif [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            changed=true
+          elif git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- backend; then
+            changed=false
+          else
+            changed=true
+          fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+
   backend:
     name: Backend - Java 21
     runs-on: ubuntu-24.04
@@ -97,8 +135,8 @@ jobs:
 
   deploy-backend:
     name: Deploy backend - AWS ECS
-    if: vars.SISAWS_AWS_DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
-    needs: [backend, frontend, infrastructure]
+    if: vars.SISAWS_AWS_DEPLOY_ENABLED == 'true' && needs.changes.outputs.backend == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    needs: [changes, backend, frontend, infrastructure]
     runs-on: ubuntu-24.04
 
     permissions:
