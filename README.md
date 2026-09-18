@@ -9,6 +9,7 @@ Plataforma full stack para estudos, simulados e evolução técnica em certifica
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F59E0B)
+![CI](https://github.com/juceliocoelho2022/SisAWS/actions/workflows/ci.yml/badge.svg)
 
 ## Visão geral
 
@@ -216,6 +217,9 @@ CI/CD           → GitHub Actions
 | BCrypt | proteção de senhas |
 | Bean Validation | validação |
 | Spring Boot Actuator | health e observabilidade básica |
+| JUnit 5 | testes unitários |
+| Mockito | mocks e isolamento de dependências |
+| JaCoCo | cobertura de testes |
 | Maven | build e dependências |
 
 ### Frontend
@@ -244,6 +248,7 @@ CI/CD           → GitHub Actions
 | Docker Compose | ambiente PostgreSQL local |
 | Git | controle de versão |
 | GitHub | repositório e colaboração |
+| GitHub Actions | CI automatizado de backend e frontend |
 
 ### AWS no roadmap
 
@@ -507,6 +512,9 @@ docs(readme): document v1.4 exam experience
 feat(adaptive): add personalized learning plan engine
 feat(web): add smart review and adaptive practice
 docs(readme): document v1.5 adaptive learning
+fix(ui): keep simulation start action visible
+test(ci): add backend coverage and automated build pipeline
+docs(readme): document v1.6 quality pipeline
 ```
 
 ---
@@ -569,6 +577,19 @@ docs(readme): document v1.5 adaptive learning
 - [x] sessão adaptativa em Modo Estudo;
 - [x] dificuldade sugerida automaticamente;
 - [ ] histórico da evolução do score adaptativo ao longo do tempo.
+
+### v1.6
+
+- [x] responsividade da configuração do simulado em 100% de zoom;
+- [x] botão de início sempre acessível no desktop;
+- [x] testes unitários de autenticação;
+- [x] testes de JWT;
+- [x] testes do motor adaptativo;
+- [x] cobertura com JaCoCo;
+- [x] CI com GitHub Actions;
+- [x] build automatizado do frontend;
+- [ ] ampliar cobertura para controllers e repositories;
+- [ ] testes de integração com MockMvc.
 
 ### v2
 

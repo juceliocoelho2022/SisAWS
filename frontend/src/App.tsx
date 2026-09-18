@@ -415,7 +415,7 @@ export default function App() {
             <span>{user.email}</span>
           </div>
         </div>
-        <div className="version">v1.5 • AWS Learning Lab</div>
+        <div className="version">v1.6 • AWS Learning Lab</div>
       </aside>
 
       <main>
