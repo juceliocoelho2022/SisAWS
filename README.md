@@ -1,66 +1,278 @@
-# SisAWS v1
+# SisAWS
 
-Plataforma de estudos e simulados para certificações AWS.
+Plataforma full stack para estudos, simulados e evolução técnica em certificações AWS, iniciando pela **AWS Certified Solutions Architect – Associate (SAA-C03)**.
 
-## Stack
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.5-6DB33F?logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111827)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F59E0B)
 
-- Java 21
-- Spring Boot 3.5.5
-- Spring Web / Data JPA / Validation / Actuator
-- H2 para execução local rápida
-- PostgreSQL 17 via Docker Compose
-- React 19 + TypeScript + Vite
-- Docker Compose
+## Visão geral
 
-## Recursos do MVP
+O **SisAWS** foi criado para transformar o estudo de AWS em uma experiência prática, mensurável e evolutiva.
 
-- Dashboard com indicadores de estudo
-- Certificação AWS Solutions Architect Associate (SAA-C03)
-- Banco inicial de questões originais
-- Simulado por domínio/serviço
-- Correção automática
-- Explicação de cada questão
-- Histórico de tentativas
-- Backend preparado para PostgreSQL
-- Frontend responsivo com tema escuro
+A proposta é centralizar:
 
-> As questões deste projeto são autorais e educacionais. Não são questões reais/vazadas dos exames AWS.
+- simulados por certificação;
+- questões por serviço e domínio;
+- correção automática;
+- explicações de respostas;
+- acompanhamento de desempenho;
+- trilhas de estudo;
+- laboratórios práticos;
+- caderno de erros;
+- flashcards;
+- modo adaptativo;
+- histórico de evolução.
 
-## Estrutura
+O primeiro foco do produto é a **SAA-C03**, com arquitetura preparada para receber novas certificações e novos módulos.
+
+> As questões utilizadas no projeto são autorais e educacionais. O SisAWS não utiliza dumps ou questões vazadas de exames oficiais.
+
+---
+
+## Funcionalidades atuais
+
+### Dashboard
+
+- banco de questões;
+- quantidade de simulados realizados;
+- média de desempenho;
+- melhor pontuação;
+- orientação de próxima etapa de estudo.
+
+### Simulados
+
+- carregamento de questões via API REST;
+- alternativas de múltipla escolha;
+- progresso do simulado;
+- correção automática;
+- resultado percentual;
+- explicação individual das respostas.
+
+### Temas da interface
+
+O aluno pode escolher entre:
+
+- **Light**
+- **Moderado**
+- **Dark**
+
+A preferência é persistida em `localStorage`.
+
+No desktop, a aplicação utiliza toda a viewport e evita rolagem global. Conteúdos extensos, como questões ou revisões, rolam somente dentro da área necessária.
+
+---
+
+## Arquitetura atual
 
 ```text
-SisAWS-v1/
-├── backend/      # Spring Boot
-├── frontend/     # React + TypeScript
+┌───────────────────────────────────────┐
+│              Frontend                 │
+│        React + TypeScript + Vite      │
+└───────────────────┬───────────────────┘
+                    │ HTTP / JSON
+                    ▼
+┌───────────────────────────────────────┐
+│               REST API                │
+│       Java 21 + Spring Boot 3.5.5     │
+│                                       │
+│  Controllers                          │
+│       ↓                               │
+│  Repositories / JPA                   │
+│       ↓                               │
+│  Hibernate                            │
+└───────────────────┬───────────────────┘
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+┌─────────────────┐   ┌─────────────────┐
+│ H2              │   │ PostgreSQL 17   │
+│ Desenvolvimento │   │ Docker Compose  │
+└─────────────────┘   └─────────────────┘
+```
+
+### Evolução planejada em AWS
+
+```text
+Route 53
+   ↓
+CloudFront
+   ↓
+S3 - Frontend React
+   ↓
+ALB / API Gateway
+   ↓
+ECS Fargate
+   ↓
+Spring Boot
+   ↓
+RDS PostgreSQL
+
+Observabilidade → CloudWatch
+Segredos        → Secrets Manager
+Imagens         → ECR
+IaC             → Terraform
+CI/CD           → GitHub Actions
+```
+
+---
+
+## Tech Stack
+
+### Backend
+
+| Tecnologia | Uso |
+|---|---|
+| Java 21 | linguagem principal |
+| Spring Boot 3.5.5 | framework backend |
+| Spring Web | API REST |
+| Spring Data JPA | persistência |
+| Hibernate | ORM |
+| Bean Validation | validação |
+| Spring Boot Actuator | health e observabilidade básica |
+| Maven | build e dependências |
+
+### Frontend
+
+| Tecnologia | Uso |
+|---|---|
+| React 19 | construção da interface |
+| TypeScript | tipagem e segurança |
+| Vite | build e ambiente de desenvolvimento |
+| Lucide React | ícones |
+| CSS | design system, responsividade e temas |
+
+### Dados
+
+| Tecnologia | Uso |
+|---|---|
+| H2 | desenvolvimento local rápido |
+| PostgreSQL 17 | banco relacional principal |
+| JPA / Hibernate | mapeamento objeto-relacional |
+
+### Infraestrutura
+
+| Tecnologia | Uso |
+|---|---|
+| Docker | containers |
+| Docker Compose | ambiente PostgreSQL local |
+| Git | controle de versão |
+| GitHub | repositório e colaboração |
+
+### AWS no roadmap
+
+- IAM
+- VPC
+- EC2
+- S3
+- CloudFront
+- Route 53
+- RDS
+- Lambda
+- API Gateway
+- SQS
+- SNS
+- EventBridge
+- ECR
+- ECS
+- Fargate
+- CloudWatch
+- Secrets Manager
+- KMS
+
+---
+
+## Estrutura do projeto
+
+```text
+SisAWS/
+├── backend/
+│   ├── src/main/java/br/com/sisaws/
+│   │   ├── certification/
+│   │   ├── dashboard/
+│   │   ├── question/
+│   │   └── simulation/
+│   ├── src/main/resources/
+│   └── pom.xml
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── api.ts
+│   │   ├── main.tsx
+│   │   └── styles.css
+│   └── package.json
+│
 ├── docker-compose.yml
+├── .gitignore
 └── README.md
 ```
 
-## 1. Executar o backend no IntelliJ
+---
 
-Abra a pasta `backend` como projeto Maven.
+## Executando o projeto
+
+### Pré-requisitos
+
+- Java 21
+- Maven
+- Node.js
+- npm
+- Docker Desktop, opcional para PostgreSQL
+- IntelliJ IDEA, recomendado para o backend
+
+### Backend com H2
+
+Abra:
+
+```text
+backend
+```
 
 Classe principal:
 
-`br.com.sisaws.SisAwsApplication`
+```text
+br.com.sisaws.SisAwsApplication
+```
 
-O perfil padrão usa H2 em memória.
+Ou pelo terminal:
 
-Backend: `http://localhost:8080`
+```bash
+cd backend
+mvn spring-boot:run
+```
 
-Health: `http://localhost:8080/actuator/health`
+API:
 
-Console H2: `http://localhost:8080/h2-console`
+```text
+http://localhost:8080
+```
 
-Dados H2:
+Health:
+
+```text
+http://localhost:8080/actuator/health
+```
+
+H2 Console:
+
+```text
+http://localhost:8080/h2-console
+```
+
+Credenciais locais:
 
 ```text
 JDBC URL: jdbc:h2:mem:sisaws
 User: sa
-Password: (vazio)
+Password:
 ```
 
-## 2. Executar frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -68,35 +280,40 @@ npm install
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+Interface:
 
-## 3. Executar com PostgreSQL
+```text
+http://localhost:5173
+```
 
-Na raiz:
+### PostgreSQL com Docker
+
+Na raiz do projeto:
 
 ```bash
 docker compose up -d postgres
 ```
 
-Depois execute o backend com:
+Execute o backend com:
 
 ```text
 SPRING_PROFILES_ACTIVE=postgres
 ```
 
-ou pelo IntelliJ em Environment Variables.
+---
 
-## Endpoints principais
+## API REST
 
-```text
-GET  /api/v1/certifications
-GET  /api/v1/dashboard
-GET  /api/v1/questions?certification=SAA-C03&limit=10
-POST /api/v1/simulations/finish
-GET  /api/v1/simulations/history
-```
+| Método | Endpoint | Responsabilidade |
+|---|---|---|
+| GET | `/api/v1/certifications` | listar certificações |
+| GET | `/api/v1/dashboard` | indicadores do dashboard |
+| GET | `/api/v1/questions?certification=SAA-C03&limit=10` | carregar questões |
+| POST | `/api/v1/simulations/finish` | finalizar e corrigir simulado |
+| GET | `/api/v1/simulations/history` | histórico de tentativas |
+| GET | `/actuator/health` | health check |
 
-## Exemplo de envio de simulado
+### Exemplo de finalização
 
 ```json
 {
@@ -110,12 +327,162 @@ GET  /api/v1/simulations/history
 }
 ```
 
-## Próximas versões sugeridas
+---
 
-- v1.1: login + JWT
-- v1.2: caderno de erros
-- v1.3: flashcards e trilhas
-- v1.4: simulados de 65 questões com cronômetro
-- v1.5: modo adaptativo
-- v2: deploy AWS com S3 + CloudFront + ECS/Fargate + RDS
-- v3: Terraform + CI/CD + observabilidade
+## Fluxo Git
+
+Depois desta configuração inicial, não é necessário baixar novos ZIPs.
+
+Atualizar o projeto local:
+
+```bash
+git pull
+```
+
+Verificar alterações:
+
+```bash
+git status
+```
+
+Salvar alterações locais:
+
+```bash
+git add .
+git commit -m "feat: descricao da alteracao"
+git push
+```
+
+---
+
+## Padrão de commits
+
+O projeto utiliza uma convenção baseada em **Conventional Commits**.
+
+| Tipo | Uso |
+|---|---|
+| `feat` | nova funcionalidade |
+| `fix` | correção de bug |
+| `docs` | documentação |
+| `refactor` | melhoria interna sem alterar comportamento |
+| `test` | testes |
+| `style` | ajustes visuais ou formatação |
+| `perf` | performance |
+| `chore` | manutenção e configuração |
+| `ci` | pipeline e automação |
+
+Exemplos:
+
+```text
+feat(simulation): add timed SAA-C03 exam
+fix(question): load answer options with entity graph
+docs(readme): professionalize project documentation
+refactor(api): move simulation rules to service layer
+test(question): add repository integration tests
+chore(docker): update PostgreSQL container
+ci(github): add backend and frontend pipelines
+```
+
+### Histórico inicial
+
+```text
+feat: estrutura inicial SisAWS
+feat(ui): add theme selector and fullscreen layout
+docs(readme): professionalize project documentation
+```
+
+---
+
+## Roadmap
+
+### v1.1
+
+- [x] dashboard;
+- [x] simulados;
+- [x] correção automática;
+- [x] explicações;
+- [x] Light / Moderado / Dark;
+- [x] layout desktop fullscreen;
+- [x] persistência da preferência de tema.
+
+### v1.2
+
+- [ ] autenticação;
+- [ ] Spring Security;
+- [ ] JWT;
+- [ ] usuários e perfis;
+- [ ] caderno de erros.
+
+### v1.3
+
+- [ ] flashcards;
+- [ ] trilhas AWS;
+- [ ] aulas;
+- [ ] progresso por serviço;
+- [ ] filtros por dificuldade.
+
+### v1.4
+
+- [ ] simulado SAA-C03 com 65 questões;
+- [ ] cronômetro;
+- [ ] marcar para revisão;
+- [ ] análise por domínio;
+- [ ] histórico detalhado.
+
+### v1.5
+
+- [ ] modo adaptativo;
+- [ ] recomendações de estudo;
+- [ ] ranking pessoal de pontos fracos;
+- [ ] revisão inteligente.
+
+### v2
+
+- [ ] frontend em S3 + CloudFront;
+- [ ] backend em ECS/Fargate;
+- [ ] RDS PostgreSQL;
+- [ ] ECR;
+- [ ] Route 53;
+- [ ] CloudWatch;
+- [ ] Secrets Manager.
+
+### v3
+
+- [ ] Terraform;
+- [ ] GitHub Actions;
+- [ ] testes automatizados;
+- [ ] observabilidade avançada;
+- [ ] arquitetura preparada para múltiplas certificações.
+
+---
+
+## Objetivo técnico
+
+Além de apoiar o estudo para certificações AWS, o SisAWS é um projeto de portfólio para demonstrar competências em:
+
+- Java Backend;
+- Spring Boot;
+- APIs REST;
+- JPA/Hibernate;
+- PostgreSQL;
+- React;
+- TypeScript;
+- Docker;
+- arquitetura de software;
+- Cloud AWS;
+- Git/GitHub;
+- evolução incremental de produto.
+
+---
+
+## Autor
+
+**Jucelio Farias Coelho**
+
+Desenvolvimento Java Backend • Dados e Engenharia de Dados • Cloud • Testes de Software
+
+GitHub: **@juceliocoelho2022**
+
+---
+
+> **SisAWS — Estude. Pratique. Evolua.**
