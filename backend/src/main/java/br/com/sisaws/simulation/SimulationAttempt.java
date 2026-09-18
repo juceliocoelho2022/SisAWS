@@ -1,6 +1,8 @@
 package br.com.sisaws.simulation;
 
+import br.com.sisaws.user.AppUser;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -9,6 +11,10 @@ public class SimulationAttempt {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Column(nullable = false, length = 30)
     private String certificationCode;
@@ -27,7 +33,9 @@ public class SimulationAttempt {
 
     protected SimulationAttempt() {}
 
-    public SimulationAttempt(String certificationCode, int totalQuestions, int correctAnswers, double scorePercent) {
+    public SimulationAttempt(AppUser user, String certificationCode, int totalQuestions,
+                             int correctAnswers, double scorePercent) {
+        this.user = user;
         this.certificationCode = certificationCode;
         this.totalQuestions = totalQuestions;
         this.correctAnswers = correctAnswers;
@@ -36,6 +44,7 @@ public class SimulationAttempt {
     }
 
     public Long getId() { return id; }
+    public AppUser getUser() { return user; }
     public String getCertificationCode() { return certificationCode; }
     public int getTotalQuestions() { return totalQuestions; }
     public int getCorrectAnswers() { return correctAnswers; }
