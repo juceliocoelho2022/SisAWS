@@ -10,3 +10,11 @@ db_instance_class       = "db.t4g.micro"
 use_nat_gateway         = true
 enable_cloudfront       = true
 db_backup_retention_days = 7
+
+# Monitoring and cost guardrails
+monthly_budget_usd         = 100
+alert_email                = ""
+ecs_cpu_alarm_threshold    = 75
+ecs_memory_alarm_threshold = 80
+rds_cpu_alarm_threshold    = 80
+rds_free_storage_alarm_gib = 5
