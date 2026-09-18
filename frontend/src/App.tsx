@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   Brain,
   Cloud,
+  CheckCircle2,
   Gauge,
   History,
   Lightbulb,
@@ -407,7 +408,13 @@ export default function App() {
                     className={answers[current.id] === option.id ? 'selected' : ''}
                     onClick={() => setAnswers({...answers, [current.id]: option.id})}
                   >
-                    <b>{String.fromCharCode(65 + optionIndex)}</b>{option.text}
+                    <b>{String.fromCharCode(65 + optionIndex)}</b>
+                    <span className="option-text">{option.text}</span>
+                    {answers[current.id] === option.id && (
+                      <span className="selected-check" aria-label="Resposta selecionada">
+                        <CheckCircle2 size={21}/>
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

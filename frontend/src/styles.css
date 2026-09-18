@@ -303,3 +303,25 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
   .trail-card{grid-template-columns:1fr}
   .history-row{grid-template-columns:1fr 52px}
 }
+
+
+/* Selected answer confirmation */
+.options button{grid-template-columns:36px minmax(0,1fr) 28px}
+.options .option-text{min-width:0}
+.options button.selected{
+  border-color:var(--success);
+  background:color-mix(in srgb,var(--success) 14%,var(--surface-strong));
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--success) 14%,transparent);
+}
+.options button.selected b{
+  background:var(--success);
+  color:#fff;
+}
+.selected-check{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  color:var(--success);
+  justify-self:end;
+}
