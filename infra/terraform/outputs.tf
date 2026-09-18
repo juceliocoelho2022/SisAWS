@@ -48,3 +48,24 @@ output "github_oidc_provider_arn" {
   description = "GitHub Actions OIDC provider used by the deployment role."
   value       = local.github_oidc_provider_arn
 }
+
+output "monthly_budget_name" {
+  description = "AWS Budgets monthly cost budget name."
+  value       = aws_budgets_budget.monthly.name
+}
+
+output "cloudwatch_alarm_names" {
+  description = "CloudWatch alarm names created for SisAWS."
+  value = [
+    aws_cloudwatch_metric_alarm.ecs_cpu_high.alarm_name,
+    aws_cloudwatch_metric_alarm.ecs_memory_high.alarm_name,
+    aws_cloudwatch_metric_alarm.alb_unhealthy_targets.alarm_name,
+    aws_cloudwatch_metric_alarm.rds_cpu_high.alarm_name,
+    aws_cloudwatch_metric_alarm.rds_free_storage_low.alarm_name
+  ]
+}
+
+output "alerts_topic_arn" {
+  description = "SNS topic ARN used for monitoring notifications when alert_email is configured."
+  value       = local.alert_email_enabled ? aws_sns_topic.alerts[0].arn : null
+}
