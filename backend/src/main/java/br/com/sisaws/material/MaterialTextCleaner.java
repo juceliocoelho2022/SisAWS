@@ -3,6 +3,7 @@ package br.com.sisaws.material;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 final class MaterialTextCleaner {
 
@@ -44,6 +45,40 @@ final class MaterialTextCleaner {
                 .trim();
 
         return BOILERPLATE_MARKERS.stream().anyMatch(normalized::contains);
+    }
+
+    static String excerptForQuery(String text, Set<String> queryTerms, int maxLength) {
+        String cleaned = cleanForStudy(text);
+        if (cleaned.isBlank() || cleaned.length() <= maxLength) return cleaned;
+
+        int bestIndex = -1;
+        int bestLength = -1;
+
+        for (String term : queryTerms) {
+            if (term == null || term.length() < 4) continue;
+            int index = normalize(cleaned).indexOf(normalize(term));
+            if (index >= 0 && term.length() > bestLength) {
+                bestIndex = index;
+                bestLength = term.length();
+            }
+        }
+
+        if (bestIndex < 0) {
+            return cleaned.substring(0, Math.max(0, maxLength - 3)).trim() + "...";
+        }
+
+        int radiusBefore = Math.min(120, maxLength / 3);
+        int start = Math.max(0, bestIndex - radiusBefore);
+        int end = Math.min(cleaned.length(), start + maxLength);
+
+        if (end - start < maxLength && start > 0) {
+            start = Math.max(0, end - maxLength);
+        }
+
+        String excerpt = cleaned.substring(start, end).trim();
+        if (start > 0) excerpt = "..." + excerpt;
+        if (end < cleaned.length()) excerpt = excerpt + "...";
+        return excerpt;
     }
 
     static int rankingPenalty(String value) {

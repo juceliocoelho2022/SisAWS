@@ -2,6 +2,8 @@ package br.com.sisaws.material;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class MaterialTextCleanerTest {
@@ -25,6 +27,26 @@ class MaterialTextCleanerTest {
         assertFalse(cleaned.contains("Página 1"));
         assertTrue(cleaned.contains("versionamento"));
         assertTrue(cleaned.contains("replicação"));
+    }
+
+    @Test
+    void shouldCenterExcerptAroundRelevantQueryTerm() {
+        String raw = """
+                Texto inicial sobre criptografia, URL pré-assinada e segurança.
+                Há vários detalhes introdutórios antes do tema principal.
+                O versionamento mantém versões anteriores de um objeto quando ele é alterado.
+                A replicação copia objetos para outro bucket e outro destino configurado.
+                Lifecycle automatiza transições e exclusões.
+                """;
+
+        String excerpt = MaterialTextCleaner.excerptForQuery(
+                raw,
+                Set.of("versionamento", "replicacao"),
+                180
+        );
+
+        assertTrue(excerpt.toLowerCase().contains("versionamento"));
+        assertTrue(excerpt.toLowerCase().contains("replicação"));
     }
 
     @Test

@@ -170,7 +170,7 @@ public class MaterialAiService {
                 selected.stream()
                         .map(item -> new SourceResponse(
                                 item.chunk().getChunkIndex() + 1,
-                                snippet(item.chunk().getContent())
+                                snippet(item.chunk().getContent(), question)
                         ))
                         .toList()
         );
@@ -219,12 +219,13 @@ public class MaterialAiService {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private String snippet(String content) {
-        String value = MaterialTextCleaner.cleanForStudy(content);
+    private String snippet(String content, String question) {
+        Set<String> terms = tokenize(question);
+        String value = MaterialTextCleaner.excerptForQuery(content, terms, 520);
         if (value.isBlank()) {
             value = content.replaceAll("\\s+", " ").trim();
         }
-        return value.length() <= 520 ? value : value.substring(0, 517) + "...";
+        return value;
     }
 
     private AiOverview overview(StudyMaterial material, MaterialAiProfile profile) {

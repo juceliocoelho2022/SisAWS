@@ -85,6 +85,29 @@ class LocalStudyGeneratorTest {
     }
 
     @Test
+    void shouldNotTreatSectionHeadingAsReplicationEvidence() {
+        String answer = generator.answer(
+                "Qual é a diferença entre versionamento e replicação?",
+                List.of(
+                        new LocalStudyGenerator.Source(
+                                3,
+                                "Versionamento, replicação e ciclo de vida 3.1 Versionamento. " +
+                                "O versionamento mantém diferentes versões de um mesmo objeto quando ele é atualizado."
+                        ),
+                        new LocalStudyGenerator.Source(
+                                4,
+                                "Replicação: copiar objetos para outro bucket e manter uma cópia em outro destino."
+                        )
+                )
+        );
+
+        assertTrue(answer.contains("versionamento"));
+        assertTrue(answer.contains("replicação"));
+        assertTrue(answer.contains("[Trecho 3]"));
+        assertTrue(answer.contains("[Trecho 4]"));
+    }
+
+    @Test
     void shouldAnswerOnlyFromRetrievedSourcesAndCiteChunk() {
         String answer = generator.answer(
                 "Qual é a diferença entre versionamento e replicação?",

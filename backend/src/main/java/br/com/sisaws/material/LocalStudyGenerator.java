@@ -131,8 +131,9 @@ public class LocalStudyGenerator {
 
             for (String concept : concepts) {
                 candidates.stream()
-                        .filter(candidate -> normalize(candidate.sentence()).contains(concept))
-                        .findFirst()
+                        .filter(candidate -> hasConceptEvidence(candidate.sentence(), concept))
+                        .max(Comparator.comparingInt(candidate ->
+                                conceptEvidenceScore(candidate.sentence(), concept)))
                         .ifPresent(candidate -> {
                             boolean duplicate = comparative.stream().anyMatch(existing ->
                                     existing.chunkNumber() == candidate.chunkNumber()
@@ -141,7 +142,11 @@ public class LocalStudyGenerator {
                         });
             }
 
-            if (comparative.size() >= 2 || coversAllConcepts(comparative, concepts)) {
+            boolean allConceptsExplained = concepts.stream().allMatch(concept ->
+                    comparative.stream().anyMatch(candidate ->
+                            hasConceptEvidence(candidate.sentence(), concept)));
+
+            if (allConceptsExplained) {
                 return comparative.stream().limit(4).toList();
             }
         }
@@ -157,12 +162,61 @@ public class LocalStudyGenerator {
                 .toList();
     }
 
-    private boolean coversAllConcepts(List<SentenceCandidate> selected, List<String> concepts) {
-        String joined = selected.stream()
-                .map(SentenceCandidate::sentence)
-                .map(this::normalize)
-                .collect(Collectors.joining(" "));
-        return concepts.stream().allMatch(joined::contains);
+    private boolean hasConceptEvidence(String sentence, String concept) {
+        String normalized = normalize(sentence);
+        if (!normalized.contains(concept)) return false;
+
+        return switch (concept) {
+            case "versionamento" -> containsAny(
+                    normalized,
+                    "versoes", "versao anterior", "preserva", "mantem", "historico",
+                    "substituido", "atualizado", "recuper"
+            );
+            case "replicacao" -> containsAny(
+                    normalized,
+                    "copia", "copiar", "copias", "outro bucket", "destino",
+                    "replica", "replicad"
+            );
+            case "lifecycle" -> containsAny(
+                    normalized,
+                    "transicao", "expiracao", "exclusao", "automatiza", "remove"
+            );
+            case "criptografia" -> containsAny(
+                    normalized,
+                    "protege", "repouso", "kms", "chave", "server-side"
+            );
+            case "url pre-assinada" -> containsAny(
+                    normalized,
+                    "temporaria", "temporario", "acesso", "periodo limitado"
+            );
+            default -> containsAny(
+                    normalized,
+                    " e ", " permite ", " serve ", " utilizado ", " armazena ",
+                    " identifica ", " contem ", " consiste ", ":"
+            );
+        };
+    }
+
+    private int conceptEvidenceScore(String sentence, String concept) {
+        String normalized = normalize(sentence);
+        int score = 0;
+
+        int index = 0;
+        while ((index = normalized.indexOf(concept, index)) >= 0) {
+            score += 2;
+            index += concept.length();
+        }
+
+        if (hasConceptEvidence(sentence, concept)) score += 8;
+        if (normalized.startsWith(concept + ":")) score += 4;
+        if (normalized.startsWith("o " + concept) || normalized.startsWith("a " + concept)) score += 2;
+        if (normalized.contains(concept + " nao e")) score += 3;
+
+        return score;
+    }
+
+    private boolean containsAny(String value, String... terms) {
+        return Arrays.stream(terms).anyMatch(value::contains);
     }
 
     private boolean looksLikeQuestion(String sentence) {
