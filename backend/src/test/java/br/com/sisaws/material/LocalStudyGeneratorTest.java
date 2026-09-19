@@ -28,6 +28,36 @@ class LocalStudyGeneratorTest {
     }
 
     @Test
+    void shouldIgnoreTestMetadataAndSuggestedQuestion() {
+        String context = """
+                SisAWS - Material original para teste técnico e acadêmico Página 1
+                Fundamentos do Amazon S3
+                Objetivo Validar upload, extração de texto, chunking, RAG e geração com Amazon Bedrock
+                Formato PDF com texto selecionável
+                Serviço AWS Amazon S3
+                Nível Fundamentos
+                Uso Teste técnico do módulo SisAWS AI Study
+                Este documento foi criado exclusivamente para teste do SisAWS.
+                Pergunta sugerida para o teste: “Segundo este material, qual é a diferença entre versionamento e replicação no Amazon S3?”
+                O Amazon Simple Storage Service (Amazon S3) é um serviço de armazenamento de objetos.
+                Bucket: contêiner lógico no qual os objetos são armazenados.
+                Objeto: unidade de dados armazenada no S3.
+                Versionamento: preserva versões anteriores de um objeto armazenado.
+                Replicação: copia objetos entre buckets conforme regras configuradas.
+                """;
+
+        LocalStudyGenerator.StudyGuide guide = generator.generateGuide("Fundamentos do Amazon S3", context);
+
+        assertFalse(guide.summary().contains("Pergunta sugerida"));
+        assertFalse(guide.summary().contains("Validar upload"));
+        assertTrue(guide.summary().contains("Amazon S3"));
+        assertTrue(guide.flashcards().stream()
+                .noneMatch(card -> card.question().contains("Pergunta sugerida")));
+        assertTrue(guide.flashcards().stream()
+                .anyMatch(card -> card.question().contains("Bucket")));
+    }
+
+    @Test
     void shouldAnswerOnlyFromRetrievedSourcesAndCiteChunk() {
         String answer = generator.answer(
                 "Qual é a diferença entre versionamento e replicação?",

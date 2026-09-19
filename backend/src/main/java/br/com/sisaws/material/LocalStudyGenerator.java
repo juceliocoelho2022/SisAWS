@@ -21,10 +21,33 @@ public class LocalStudyGenerator {
             "segundo", "material", "entre"
     );
 
+    private static final List<String> BOILERPLATE_MARKERS = List.of(
+            "material original para teste tecnico e academico",
+            "material de teste biblioteca academica sisaws",
+            "objetivo validar upload",
+            "formato pdf com texto selecionavel",
+            "nivel fundamentos",
+            "uso teste tecnico",
+            "criado exclusivamente para teste do sisaws",
+            "pergunta sugerida para o teste"
+    );
+
+    private static final List<String> ACADEMIC_CONCEPTS = List.of(
+            "amazon s3", "bucket", "objeto", "chave", "metadados", "versionamento",
+            "replicacao", "lifecycle", "criptografia", "url pre-assinada",
+            "storage class", "classe de armazenamento"
+    );
+
     public StudyGuide generateGuide(String title, String context) {
         List<String> sentences = meaningfulSentences(context);
 
-        String summary = sentences.stream()
+        List<String> academicSentences = sentences.stream()
+                .filter(this::containsAcademicConcept)
+                .toList();
+
+        List<String> summarySource = academicSentences.isEmpty() ? sentences : academicSentences;
+
+        String summary = summarySource.stream()
                 .limit(4)
                 .collect(Collectors.joining(" "));
 
@@ -32,8 +55,7 @@ public class LocalStudyGenerator {
             summary = "O material foi indexado e está disponível para consulta contextual.";
         }
 
-        String keyPoints = sentences.stream()
-                .skip(Math.min(2, sentences.size()))
+        String keyPoints = summarySource.stream()
                 .limit(6)
                 .map(sentence -> "• " + sentence)
                 .collect(Collectors.joining("\n"));
@@ -45,10 +67,10 @@ public class LocalStudyGenerator {
         List<Flashcard> flashcards = definitionFlashcards(context);
 
         if (flashcards.size() < 3) {
-            for (String sentence : sentences) {
+            for (String sentence : summarySource) {
                 if (flashcards.size() >= 5) break;
                 String subject = inferSubject(sentence);
-                if (subject == null) continue;
+                if (subject == null || isBoilerplate(subject)) continue;
 
                 String question = "O que o material destaca sobre " + subject + "?";
                 boolean duplicate = flashcards.stream()
@@ -91,7 +113,7 @@ public class LocalStudyGenerator {
         if (selected.isEmpty() && !sources.isEmpty()) {
             String fallback = meaningfulSentences(sources.getFirst().content()).stream()
                     .findFirst()
-                    .orElse(sources.getFirst().content());
+                    .orElse(cleanText(sources.getFirst().content()).trim());
             selected = List.of(new SentenceCandidate(sources.getFirst().chunkNumber(), fallback, 0));
         }
 
@@ -109,35 +131,74 @@ public class LocalStudyGenerator {
         Matcher matcher = DEFINITION_PATTERN.matcher(context);
 
         while (matcher.find() && cards.size() < 5) {
-            String term = matcher.group(1).replaceAll("\\s+", " ").trim();
-            String definition = matcher.group(2).replaceAll("\\s+", " ").trim();
+            String term = matcher.group(1)
+                    .replace("•", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            String definition = matcher.group(2)
+                    .replace("•", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
 
             if (term.length() > 45 || definition.length() < 20) continue;
+            if (isBoilerplate(term) || isBoilerplate(definition)) continue;
+            if (!containsAcademicConcept(term + " " + definition)) continue;
 
-            cards.add(new Flashcard(
-                    "O que o material define como " + term + "?",
-                    definition
-            ));
+            String question = "O que o material define como " + term + "?";
+            boolean duplicate = cards.stream()
+                    .anyMatch(card -> card.question().equalsIgnoreCase(question));
+
+            if (!duplicate) {
+                cards.add(new Flashcard(question, definition));
+            }
         }
 
         return cards;
     }
 
     private List<String> meaningfulSentences(String text) {
-        return Arrays.stream(text
+        return Arrays.stream(cleanText(text)
                         .replaceAll("[\\r\\t]+", " ")
+                        .replace("•", ". ")
                         .replaceAll("\\s+", " ")
                         .split("(?<=[.!?])\\s+"))
                 .map(String::trim)
-                .filter(sentence -> sentence.length() >= 45)
+                .map(sentence -> sentence.replaceAll("^[.\\-–— ]+", "").trim())
+                .filter(sentence -> sentence.length() >= 35)
                 .filter(sentence -> sentence.length() <= 420)
+                .filter(sentence -> !isBoilerplate(sentence))
                 .distinct()
                 .toList();
     }
 
+    private String cleanText(String text) {
+        if (text == null) return "";
+
+        return text
+                .replaceAll("(?i)SisAWS\\s*-\\s*Material original para teste técnico e acadêmico\\s+Página\\s+\\d+", " ")
+                .replaceAll("(?i)Material de Teste\\s*-\\s*Biblioteca Acadêmica SisAWS", " ")
+                .replaceAll("(?i)Objetivo\\s+Validar upload, extração de texto, chunking, RAG e geração com Amazon Bedrock", " ")
+                .replaceAll("(?i)Formato\\s+PDF com texto selecionável", " ")
+                .replaceAll("(?i)Serviço AWS\\s+Amazon S3", " ")
+                .replaceAll("(?i)Nível\\s+Fundamentos", " ")
+                .replaceAll("(?i)Uso\\s+Teste técnico do módulo SisAWS AI Study", " ")
+                .replaceAll("(?i)Este documento foi criado exclusivamente para teste do SisAWS\\.", " ")
+                .replaceAll("(?i)Pergunta sugerida para o teste:\\s*[“\"]?[^?]{0,240}\\?[”\"]?", " ");
+    }
+
+    private boolean isBoilerplate(String value) {
+        String normalized = normalize(value).replaceAll("[^a-z0-9 ]+", " ").replaceAll("\\s+", " ").trim();
+        return BOILERPLATE_MARKERS.stream().anyMatch(normalized::contains);
+    }
+
+    private boolean containsAcademicConcept(String value) {
+        String normalized = normalize(value);
+        return ACADEMIC_CONCEPTS.stream().anyMatch(normalized::contains);
+    }
+
     private String inferSubject(String sentence) {
         String cleaned = sentence.replaceAll("^[0-9. ]+", "").trim();
-        int limit = Math.min(cleaned.length(), 55);
+        int limit = Math.min(cleaned.length(), 70);
         String prefix = cleaned.substring(0, limit);
         int boundary = prefix.indexOf(" é ");
         if (boundary < 0) boundary = prefix.indexOf(" pode ");
@@ -145,7 +206,7 @@ public class LocalStudyGenerator {
         if (boundary < 0) return null;
 
         String subject = prefix.substring(0, boundary).trim();
-        return subject.length() >= 3 && subject.length() <= 45 ? subject : null;
+        return subject.length() >= 3 && subject.length() <= 55 ? subject : null;
     }
 
     private int overlapScore(String sentence, Set<String> terms) {
