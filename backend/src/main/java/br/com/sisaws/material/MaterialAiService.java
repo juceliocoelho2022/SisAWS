@@ -52,9 +52,13 @@ public class MaterialAiService {
         byte[] bytes = storage.readBytes(material.getS3Key());
         MaterialExtractionService.ExtractedMaterial extracted = extraction.extract(bytes);
 
-        chunkRepository.deleteAllByMaterial(material);
-        flashcardRepository.deleteAllByMaterial(material);
-        profileRepository.deleteByMaterial(material);
+        // Bulk deletes execute immediately in PostgreSQL. This ordering makes
+        // reprocessing idempotent and prevents the unique key
+        // (material_id, chunk_index) from colliding with stale chunks.
+        flashcardRepository.deleteAllByMaterialId(material.getId());
+        profileRepository.deleteByMaterialId(material.getId());
+        chunkRepository.deleteAllByMaterialId(material.getId());
+        chunkRepository.flush();
 
         List<MaterialChunk> chunks = new ArrayList<>();
         for (int i = 0; i < extracted.chunks().size(); i++) {
