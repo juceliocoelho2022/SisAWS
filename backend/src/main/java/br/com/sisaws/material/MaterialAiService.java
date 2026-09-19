@@ -7,7 +7,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.text.Normalizer;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -204,7 +203,7 @@ public class MaterialAiService {
                 index += term.length();
             }
         }
-        return score;
+        return Math.max(0, score - MaterialTextCleaner.rankingPenalty(content));
     }
 
     private Set<String> tokenize(String value) {
@@ -221,7 +220,10 @@ public class MaterialAiService {
     }
 
     private String snippet(String content) {
-        String value = content.replaceAll("\\s+", " ").trim();
+        String value = MaterialTextCleaner.cleanForStudy(content);
+        if (value.isBlank()) {
+            value = content.replaceAll("\\s+", " ").trim();
+        }
         return value.length() <= 520 ? value : value.substring(0, 517) + "...";
     }
 

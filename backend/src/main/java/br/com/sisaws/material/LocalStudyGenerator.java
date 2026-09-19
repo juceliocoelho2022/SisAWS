@@ -21,17 +21,6 @@ public class LocalStudyGenerator {
             "segundo", "material", "entre"
     );
 
-    private static final List<String> BOILERPLATE_MARKERS = List.of(
-            "material original para teste tecnico e academico",
-            "material de teste biblioteca academica sisaws",
-            "objetivo validar upload",
-            "formato pdf com texto selecionavel",
-            "nivel fundamentos",
-            "uso teste tecnico",
-            "criado exclusivamente para teste do sisaws",
-            "pergunta sugerida para o teste"
-    );
-
     private static final List<String> ACADEMIC_CONCEPTS = List.of(
             "amazon s3", "bucket", "objeto", "chave", "metadados", "versionamento",
             "replicacao", "lifecycle", "criptografia", "url pre-assinada",
@@ -230,23 +219,11 @@ public class LocalStudyGenerator {
     }
 
     private String cleanText(String text) {
-        if (text == null) return "";
-
-        return text
-                .replaceAll("(?i)SisAWS\\s*-\\s*Material original para teste técnico e acadêmico\\s+Página\\s+\\d+", " ")
-                .replaceAll("(?i)Material de Teste\\s*-\\s*Biblioteca Acadêmica SisAWS", " ")
-                .replaceAll("(?i)Objetivo\\s+Validar upload, extração de texto, chunking, RAG e geração com Amazon Bedrock", " ")
-                .replaceAll("(?i)Formato\\s+PDF com texto selecionável", " ")
-                .replaceAll("(?i)Serviço AWS\\s+Amazon S3", " ")
-                .replaceAll("(?i)Nível\\s+Fundamentos", " ")
-                .replaceAll("(?i)Uso\\s+Teste técnico do módulo SisAWS AI Study", " ")
-                .replaceAll("(?i)Este documento foi criado exclusivamente para teste do SisAWS\\.", " ")
-                .replaceAll("(?i)Pergunta sugerida para o teste:\\s*[“\"]?[^?]{0,240}\\?[”\"]?", " ");
+        return MaterialTextCleaner.cleanForStudy(text);
     }
 
     private boolean isBoilerplate(String value) {
-        String normalized = normalize(value).replaceAll("[^a-z0-9 ]+", " ").replaceAll("\\s+", " ").trim();
-        return BOILERPLATE_MARKERS.stream().anyMatch(normalized::contains);
+        return MaterialTextCleaner.isBoilerplate(value);
     }
 
     private boolean containsAcademicConcept(String value) {
