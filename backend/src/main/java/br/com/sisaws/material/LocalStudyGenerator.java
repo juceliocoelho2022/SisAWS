@@ -91,24 +91,9 @@ public class LocalStudyGenerator {
 
     public String answer(String question, List<Source> sources) {
         Set<String> terms = tokens(question);
-        List<SentenceCandidate> candidates = new ArrayList<>();
+        List<SentenceCandidate> candidates = collectCandidates(sources, terms);
 
-        for (Source source : sources) {
-            for (String sentence : meaningfulSentences(source.content())) {
-                int score = overlapScore(sentence, terms);
-                if (score > 0) {
-                    candidates.add(new SentenceCandidate(source.chunkNumber(), sentence, score));
-                }
-            }
-        }
-
-        candidates.sort(Comparator
-                .comparingInt(SentenceCandidate::score).reversed()
-                .thenComparingInt(SentenceCandidate::chunkNumber));
-
-        List<SentenceCandidate> selected = candidates.stream()
-                .limit(3)
-                .toList();
+        List<SentenceCandidate> selected = selectEvidence(question, candidates);
 
         if (selected.isEmpty() && !sources.isEmpty()) {
             String fallback = meaningfulSentences(sources.getFirst().content()).stream()
@@ -124,6 +109,79 @@ public class LocalStudyGenerator {
         return "Com base exclusivamente no material: " + selected.stream()
                 .map(item -> item.sentence() + " [Trecho " + item.chunkNumber() + "]")
                 .collect(Collectors.joining(" "));
+    }
+
+    private List<SentenceCandidate> collectCandidates(List<Source> sources, Set<String> terms) {
+        List<SentenceCandidate> candidates = new ArrayList<>();
+
+        for (Source source : sources) {
+            for (String sentence : meaningfulSentences(source.content())) {
+                if (looksLikeQuestion(sentence)) continue;
+
+                int score = overlapScore(sentence, terms);
+                if (score > 0) {
+                    candidates.add(new SentenceCandidate(source.chunkNumber(), sentence, score));
+                }
+            }
+        }
+
+        candidates.sort(Comparator
+                .comparingInt(SentenceCandidate::score).reversed()
+                .thenComparingInt(SentenceCandidate::chunkNumber));
+
+        return candidates;
+    }
+
+    private List<SentenceCandidate> selectEvidence(String question, List<SentenceCandidate> candidates) {
+        if (candidates.isEmpty()) return List.of();
+
+        List<String> concepts = requestedConcepts(question);
+
+        if (concepts.size() >= 2) {
+            List<SentenceCandidate> comparative = new ArrayList<>();
+
+            for (String concept : concepts) {
+                candidates.stream()
+                        .filter(candidate -> normalize(candidate.sentence()).contains(concept))
+                        .findFirst()
+                        .ifPresent(candidate -> {
+                            boolean duplicate = comparative.stream().anyMatch(existing ->
+                                    existing.chunkNumber() == candidate.chunkNumber()
+                                            && existing.sentence().equals(candidate.sentence()));
+                            if (!duplicate) comparative.add(candidate);
+                        });
+            }
+
+            if (comparative.size() >= 2 || coversAllConcepts(comparative, concepts)) {
+                return comparative.stream().limit(4).toList();
+            }
+        }
+
+        return candidates.stream().limit(3).toList();
+    }
+
+    private List<String> requestedConcepts(String question) {
+        String normalized = normalize(question);
+        return ACADEMIC_CONCEPTS.stream()
+                .filter(normalized::contains)
+                .distinct()
+                .toList();
+    }
+
+    private boolean coversAllConcepts(List<SentenceCandidate> selected, List<String> concepts) {
+        String joined = selected.stream()
+                .map(SentenceCandidate::sentence)
+                .map(this::normalize)
+                .collect(Collectors.joining(" "));
+        return concepts.stream().allMatch(joined::contains);
+    }
+
+    private boolean looksLikeQuestion(String sentence) {
+        String normalized = normalize(sentence).trim();
+        return sentence.contains("?")
+                || normalized.startsWith("qual ")
+                || normalized.startsWith("quais ")
+                || normalized.startsWith("pergunta sugerida");
     }
 
     private List<Flashcard> definitionFlashcards(String context) {
