@@ -219,6 +219,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${API}${path}`, {...init, headers})
 
+  const publicAuthPath = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password'
+  ].some(publicPath => path.startsWith(publicPath))
+
+  if (response.status === 401 && !publicAuthPath) {
+    clearSession()
+    window.dispatchEvent(new Event('sisaws:unauthorized'))
+    throw new Error('Sua sessão expirou. Entre novamente.')
+  }
+
   if (!response.ok) {
     let message = 'Não foi possível concluir a operação.'
 

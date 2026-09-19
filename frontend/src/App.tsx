@@ -132,6 +132,7 @@ export default function App() {
   const [finishing, setFinishing] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [error, setError] = useState('')
+  const [authNotice, setAuthNotice] = useState('')
 
   const current = questions[index]
   const answered = Object.keys(answers).length
@@ -151,9 +152,25 @@ export default function App() {
     }
 
     getMe()
-      .then(setUser)
-      .catch(() => clearSession())
+      .then(userResponse => {
+        setUser(userResponse)
+        setAuthNotice('')
+      })
+      .catch(() => {
+        clearSession()
+        setAuthNotice('Sua sessão expirou. Entre novamente.')
+      })
       .finally(() => setCheckingSession(false))
+  }, [])
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout()
+      setAuthNotice('Sua sessão expirou. Entre novamente.')
+    }
+
+    window.addEventListener('sisaws:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('sisaws:unauthorized', handleUnauthorized)
   }, [])
 
   useEffect(() => {
@@ -510,7 +527,17 @@ export default function App() {
   }
 
   if (!user) {
-    return <AuthScreen theme={theme} setTheme={setTheme} onAuthenticated={setUser} />
+    return (
+      <AuthScreen
+        theme={theme}
+        setTheme={setTheme}
+        notice={authNotice}
+        onAuthenticated={authenticatedUser => {
+          setAuthNotice('')
+          setUser(authenticatedUser)
+        }}
+      />
+    )
   }
 
   const pageTitle: Record<Page, string> = {
@@ -1311,10 +1338,12 @@ function ThemeSwitcher({theme, setTheme}: {theme: Theme; setTheme: (theme: Theme
 function AuthScreen({
   theme,
   setTheme,
+  notice,
   onAuthenticated
 }: {
   theme: Theme
   setTheme: (theme: Theme) => void
+  notice?: string
   onAuthenticated: (user: AuthUser) => void
 }) {
   type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
@@ -1425,6 +1454,7 @@ function AuthScreen({
             <button type="button" className="auth-link" onClick={() => changeMode('forgot')}>Esqueci minha senha</button>
           )}
 
+          {notice && !error && !message && <div className="auth-error">{notice}</div>}
           {error && <div className="auth-error">{error}</div>}
           {message && <div className="auth-success">{message}</div>}
 
