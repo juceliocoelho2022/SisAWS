@@ -41,7 +41,37 @@ function Invoke-SisAws {
         $params.Body = $Body | ConvertTo-Json -Depth 10
     }
 
-    Invoke-RestMethod @params
+    $response = Invoke-WebRequest @params -SkipHttpErrorCheck
+
+    if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
+        if ([string]::IsNullOrWhiteSpace($response.Content)) {
+            return $null
+        }
+
+        try {
+            return $response.Content | ConvertFrom-Json
+        }
+        catch {
+            return $response.Content
+        }
+    }
+
+    $server = ""
+    if ($response.Headers -and $response.Headers.ContainsKey("Server")) {
+        $server = ($response.Headers["Server"] -join ",")
+    }
+
+    $contentType = ""
+    if ($response.Headers -and $response.Headers.ContainsKey("Content-Type")) {
+        $contentType = ($response.Headers["Content-Type"] -join ",")
+    }
+
+    $bodyText = [string]$response.Content
+    if ($bodyText.Length -gt 1200) {
+        $bodyText = $bodyText.Substring(0, 1200) + "..."
+    }
+
+    throw "HTTP $($response.StatusCode) $Method $Uri | Server=$server | Content-Type=$contentType | Body=$bodyText"
 }
 
 if ([string]::IsNullOrWhiteSpace($Email)) {
