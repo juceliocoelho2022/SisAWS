@@ -977,7 +977,13 @@ export default function App() {
                           <>
                             <div className="ai-status-line">
                               <span>{materialAi.chunkCount} trechos indexados</span>
-                              <span>{materialAi.bedrockEnabled ? 'Amazon Bedrock ativo' : 'RAG local • Bedrock desativado'}</span>
+                              <span>{
+                                materialAi.generationMode === 'BEDROCK'
+                                  ? 'Amazon Bedrock ativo'
+                                  : materialAi.generationMode === 'LOCAL_FALLBACK'
+                                    ? 'Fallback local ativo'
+                                    : 'RAG local'
+                              }</span>
                               <span>{materialAi.generationMode}</span>
                             </div>
 
@@ -1023,7 +1029,7 @@ export default function App() {
                                 <div className="ai-answer-head">
                                   <Bot size={19}/>
                                   <strong>Resposta do tutor</strong>
-                                  <span>{materialAiAnswer.generatedByBedrock ? 'BEDROCK' : 'RAG'}</span>
+                                  <span>{materialAiAnswer.generationMode}</span>
                                 </div>
                                 <p>{materialAiAnswer.answer}</p>
                                 <div className="ai-sources">

@@ -25,6 +25,7 @@ public class MaterialAiService {
     private final MaterialStorageService storage;
     private final MaterialExtractionService extraction;
     private final BedrockStudyGenerator generator;
+    private final LocalStudyGenerator localGenerator;
 
     public MaterialAiService(
             StudyMaterialRepository materialRepository,
@@ -33,7 +34,8 @@ public class MaterialAiService {
             MaterialAiFlashcardRepository flashcardRepository,
             MaterialStorageService storage,
             MaterialExtractionService extraction,
-            BedrockStudyGenerator generator) {
+            BedrockStudyGenerator generator,
+            LocalStudyGenerator localGenerator) {
         this.materialRepository = materialRepository;
         this.chunkRepository = chunkRepository;
         this.profileRepository = profileRepository;
@@ -41,6 +43,7 @@ public class MaterialAiService {
         this.storage = storage;
         this.extraction = extraction;
         this.generator = generator;
+        this.localGenerator = localGenerator;
     }
 
     @Transactional
@@ -64,22 +67,42 @@ public class MaterialAiService {
                 .map(MaterialChunk::getContent)
                 .collect(Collectors.joining("\n\n"));
 
-        BedrockStudyGenerator.StudyGuide guide = generator.generateGuide(material.getTitle(), generationContext);
+        BedrockStudyGenerator.StudyGuide bedrockGuide =
+                generator.generateGuide(material.getTitle(), generationContext);
+
+        String summary;
+        String keyPoints;
+        String generationMode;
+        List<MaterialAiFlashcard> generatedCards;
+
+        if (bedrockGuide.generatedByBedrock()) {
+            summary = bedrockGuide.summary();
+            keyPoints = bedrockGuide.keyPoints();
+            generationMode = "BEDROCK";
+            generatedCards = bedrockGuide.flashcards().stream()
+                    .map(card -> new MaterialAiFlashcard(material, card.question(), card.answer()))
+                    .toList();
+        } else {
+            LocalStudyGenerator.StudyGuide localGuide =
+                    localGenerator.generateGuide(material.getTitle(), generationContext);
+            summary = localGuide.summary();
+            keyPoints = localGuide.keyPoints();
+            generationMode = "LOCAL_FALLBACK";
+            generatedCards = localGuide.flashcards().stream()
+                    .map(card -> new MaterialAiFlashcard(material, card.question(), card.answer()))
+                    .toList();
+        }
 
         MaterialAiProfile profile = profileRepository.save(new MaterialAiProfile(
                 material,
-                guide.summary(),
-                guide.keyPoints(),
-                guide.generatedByBedrock()
-                        ? "BEDROCK"
-                        : (generator.isEnabled() ? "BEDROCK_FALLBACK" : "INDEX_ONLY"),
+                summary,
+                keyPoints,
+                generationMode,
                 chunks.size()
         ));
 
-        if (!guide.flashcards().isEmpty()) {
-            flashcardRepository.saveAll(guide.flashcards().stream()
-                    .map(card -> new MaterialAiFlashcard(material, card.question(), card.answer()))
-                    .toList());
+        if (!generatedCards.isEmpty()) {
+            flashcardRepository.saveAll(generatedCards);
         }
 
         return overview(material, profile);
@@ -119,12 +142,28 @@ public class MaterialAiService {
                 .map(item -> "[Trecho " + (item.chunk().getChunkIndex() + 1) + "]\n" + item.chunk().getContent())
                 .collect(Collectors.joining("\n\n"));
 
-        BedrockStudyGenerator.AnswerResult answer =
+        BedrockStudyGenerator.AnswerResult bedrockAnswer =
                 generator.answer(material.getTitle(), question, context);
 
+        List<LocalStudyGenerator.Source> localSources = selected.stream()
+                .map(item -> new LocalStudyGenerator.Source(
+                        item.chunk().getChunkIndex() + 1,
+                        item.chunk().getContent()
+                ))
+                .toList();
+
+        String answer = bedrockAnswer.generatedByBedrock()
+                ? bedrockAnswer.text()
+                : localGenerator.answer(question, localSources);
+
+        String generationMode = bedrockAnswer.generatedByBedrock()
+                ? "BEDROCK"
+                : "LOCAL_RAG";
+
         return new AskResponse(
-                answer.text(),
-                answer.generatedByBedrock(),
+                answer,
+                bedrockAnswer.generatedByBedrock(),
+                generationMode,
                 selected.stream()
                         .map(item -> new SourceResponse(
                                 item.chunk().getChunkIndex() + 1,
@@ -224,5 +263,10 @@ public class MaterialAiService {
 
     public record AiFlashcardResponse(Long id, String question, String answer) {}
     public record SourceResponse(int chunkNumber, String excerpt) {}
-    public record AskResponse(String answer, boolean generatedByBedrock, List<SourceResponse> sources) {}
+    public record AskResponse(
+            String answer,
+            boolean generatedByBedrock,
+            String generationMode,
+            List<SourceResponse> sources
+    ) {}
 }

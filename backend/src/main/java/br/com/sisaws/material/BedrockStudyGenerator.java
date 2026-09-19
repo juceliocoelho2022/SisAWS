@@ -12,6 +12,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+import software.amazon.awssdk.services.bedrockruntime.model.ValidationException;
 
 @Component
 public class BedrockStudyGenerator {
@@ -20,7 +23,10 @@ public class BedrockStudyGenerator {
 
     private final boolean enabled;
     private final String modelId;
+    private static final long AUTHORIZATION_COOLDOWN_MILLIS = 10 * 60 * 1000L;
+
     private final BedrockRuntimeClient client;
+    private final AtomicLong blockedUntilEpochMillis = new AtomicLong(0);
 
     public BedrockStudyGenerator(
             @Value("${sisaws.security.ai.enabled:false}") boolean enabled,
@@ -38,7 +44,7 @@ public class BedrockStudyGenerator {
     }
 
     public StudyGuide generateGuide(String title, String context) {
-        if (!enabled) {
+        if (!canInvoke()) {
             return new StudyGuide(
                     "Conteúdo indexado com sucesso. Ative o Amazon Bedrock para gerar um resumo pedagógico automático.",
                     "O material já está disponível para busca contextual e RAG.",
@@ -77,19 +83,17 @@ public class BedrockStudyGenerator {
             String output = converse(prompt, 1800, 0.2F);
             StudyGuide guide = parseGuide(output);
             return new StudyGuide(guide.summary(), guide.keyPoints(), guide.flashcards(), true);
+        } catch (ValidationException exception) {
+            markTemporarilyUnavailable(exception);
+            return unavailableGuide();
         } catch (RuntimeException exception) {
             log.warn("Bedrock study guide generation failed", exception);
-            return new StudyGuide(
-                    "O material foi indexado, mas o resumo generativo não pôde ser criado neste momento.",
-                    "Use o chat contextual ou reprocesse o material quando o Bedrock estiver disponível.",
-                    List.of(),
-                    false
-            );
+            return unavailableGuide();
         }
     }
 
     public AnswerResult answer(String title, String question, String context) {
-        if (!enabled) {
+        if (!canInvoke()) {
             return new AnswerResult(
                     "O conteúdo foi indexado. Ative o Amazon Bedrock para gerar uma resposta sintetizada; consulte os trechos recuperados abaixo.",
                     false
@@ -114,6 +118,12 @@ public class BedrockStudyGenerator {
 
         try {
             return new AnswerResult(converse(prompt, 1000, 0.1F), true);
+        } catch (ValidationException exception) {
+            markTemporarilyUnavailable(exception);
+            return new AnswerResult(
+                    "O Amazon Bedrock está temporariamente indisponível. O SisAWS usará o RAG local.",
+                    false
+            );
         } catch (RuntimeException exception) {
             log.warn("Bedrock question answering failed", exception);
             return new AnswerResult(
@@ -121,6 +131,30 @@ public class BedrockStudyGenerator {
                     false
             );
         }
+    }
+
+    private boolean canInvoke() {
+        return enabled && System.currentTimeMillis() >= blockedUntilEpochMillis.get();
+    }
+
+    private void markTemporarilyUnavailable(ValidationException exception) {
+        long until = System.currentTimeMillis() + AUTHORIZATION_COOLDOWN_MILLIS;
+        blockedUntilEpochMillis.set(until);
+        log.warn(
+                "Bedrock validation failure; activating local fallback for 10 minutes. status={}, requestId={}, message={}",
+                exception.statusCode(),
+                exception.requestId(),
+                exception.getMessage()
+        );
+    }
+
+    private StudyGuide unavailableGuide() {
+        return new StudyGuide(
+                "O material foi indexado, mas o Amazon Bedrock não está disponível para esta conta neste momento.",
+                "O SisAWS continuará com resumo, flashcards e RAG local.",
+                List.of(),
+                false
+        );
     }
 
     private String converse(String prompt, int maxTokens, float temperature) {
