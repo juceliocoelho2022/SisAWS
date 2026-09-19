@@ -130,6 +130,7 @@ export default function App() {
   const [reviewQuestionIds, setReviewQuestionIds] = useState<Set<number>>(new Set())
   const [secondsRemaining, setSecondsRemaining] = useState(EXAM_DURATION_SECONDS)
   const [finishing, setFinishing] = useState(false)
+  const [checkingAnswerId, setCheckingAnswerId] = useState<number | null>(null)
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [error, setError] = useState('')
   const [authNotice, setAuthNotice] = useState('')
@@ -138,6 +139,11 @@ export default function App() {
   const answered = Object.keys(answers).length
   const progress = questions.length ? Math.round((answered / questions.length) * 100) : 0
   const currentFeedback = current ? studyFeedback[current.id] : undefined
+  const checkingCurrentAnswer = Boolean(
+    current
+    && simulationMode === 'study'
+    && checkingAnswerId === current.id
+  )
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -444,14 +450,28 @@ export default function App() {
   async function selectAnswer(optionId: number) {
     if (!current) return
 
-    setAnswers(previous => ({...previous, [current.id]: optionId}))
+    const questionId = current.id
+
+    if (
+      simulationMode === 'study'
+      && (studyFeedback[questionId] || checkingAnswerId === questionId)
+    ) {
+      return
+    }
+
+    setAnswers(previous => ({...previous, [questionId]: optionId}))
 
     if (simulationMode === 'study') {
+      setCheckingAnswerId(questionId)
+
       try {
-        const feedback = await checkAnswer(current.id, [optionId])
-        setStudyFeedback(previous => ({...previous, [current.id]: feedback}))
+        const feedback = await checkAnswer(questionId, [optionId])
+        setStudyFeedback(previous => ({...previous, [questionId]: feedback}))
+        setError('')
       } catch {
         setError('Não foi possível verificar esta resposta.')
+      } finally {
+        setCheckingAnswerId(previous => previous === questionId ? null : previous)
       }
     }
   }
@@ -515,6 +535,7 @@ export default function App() {
     setIndex(0)
     setSecondsRemaining(EXAM_DURATION_SECONDS)
     setFinishing(false)
+    setCheckingAnswerId(null)
     setPage('dashboard')
     setError('')
   }
@@ -758,10 +779,10 @@ export default function App() {
               <div className="options">
                 {current.options.map((option, optionIndex) => {
                   const selected = answers[current.id] === option.id
-                  const correctOption = simulationMode === 'study'
+                  const hasFeedback = simulationMode === 'study' && Boolean(currentFeedback)
+                  const correctOption = hasFeedback
                     && currentFeedback?.correctOptionIds.includes(option.id)
-                  const wrongSelected = simulationMode === 'study'
-                    && Boolean(currentFeedback)
+                  const wrongSelected = hasFeedback
                     && selected
                     && !currentFeedback?.correct
 
@@ -776,6 +797,7 @@ export default function App() {
                       key={option.id}
                       className={classes}
                       onClick={() => selectAnswer(option.id)}
+                      disabled={simulationMode === 'study' && (checkingCurrentAnswer || Boolean(currentFeedback))}
                     >
                       <b>{String.fromCharCode(65 + optionIndex)}</b>
                       <span className="option-text">{option.text}</span>
@@ -797,6 +819,15 @@ export default function App() {
                 })}
               </div>
 
+              {simulationMode === 'study' && checkingCurrentAnswer && !currentFeedback && (
+                <div className="study-feedback checking">
+                  <div>
+                    <Clock3 size={21}/>
+                    <strong>Verificando resposta...</strong>
+                  </div>
+                </div>
+              )}
+
               {simulationMode === 'study' && currentFeedback && (
                 <div className={currentFeedback.correct ? 'study-feedback correct' : 'study-feedback incorrect'}>
                   <div>
@@ -809,10 +840,19 @@ export default function App() {
               <div className="quiz-actions">
                 <button disabled={index === 0} onClick={() => setIndex(index - 1)}>Anterior</button>
                 {index < questions.length - 1
-                  ? <button className="primary" onClick={() => setIndex(index + 1)}>Próxima</button>
+                  ? <button
+                      className="primary"
+                      disabled={simulationMode === 'study' && !currentFeedback}
+                      onClick={() => setIndex(index + 1)}
+                    >
+                      Próxima
+                    </button>
                   : <button
                       className="primary"
-                      disabled={finishing || (simulationMode === 'study' && answered !== questions.length)}
+                      disabled={
+                        finishing
+                        || (simulationMode === 'study' && (answered !== questions.length || !currentFeedback))
+                      }
                       onClick={() => finish(false)}
                     >
                       {finishing ? 'Finalizando...' : 'Finalizar simulado'}

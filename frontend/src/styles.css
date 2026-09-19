@@ -309,12 +309,12 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
 .options button{grid-template-columns:36px minmax(0,1fr) 28px}
 .options .option-text{min-width:0}
 .options button.selected{
-  border-color:var(--success);
-  background:color-mix(in srgb,var(--success) 14%,var(--surface-strong));
-  box-shadow:0 0 0 2px color-mix(in srgb,var(--success) 14%,transparent);
+  border-color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 9%,var(--surface-strong));
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent);
 }
 .options button.selected b{
-  background:var(--success);
+  background:var(--accent);
   color:#fff;
 }
 .selected-check{
@@ -322,7 +322,7 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
   height:26px;
   display:grid;
   place-items:center;
-  color:var(--success);
+  color:var(--accent);
   justify-self:end;
 }
 
@@ -356,6 +356,8 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
 .study-feedback>div{display:flex;align-items:center;gap:8px}
 .study-feedback.correct>div{color:var(--success)}
 .study-feedback.incorrect>div{color:var(--danger)}
+.study-feedback.checking>div{color:var(--accent)}
+.options button:disabled{cursor:default}
 .study-feedback p{margin:8px 0 0;color:var(--text-muted);line-height:1.5;font-size:13px}
 .review-summary{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface-soft);color:var(--text-muted);padding:10px 12px;border-radius:10px;margin:13px 0}
 .review-summary svg{color:var(--accent)}
