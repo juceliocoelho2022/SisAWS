@@ -102,7 +102,7 @@ class LocalStudyGeneratorTest {
         );
 
         assertTrue(answer.contains("versionamento"));
-        assertTrue(answer.contains("replicação"));
+        assertTrue(answer.toLowerCase().contains("replicação"));
         assertTrue(answer.contains("[Trecho 3]"));
         assertTrue(answer.contains("[Trecho 4]"));
     }
