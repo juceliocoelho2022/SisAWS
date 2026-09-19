@@ -18,3 +18,11 @@ ecs_cpu_alarm_threshold    = 75
 ecs_memory_alarm_threshold = 80
 rds_cpu_alarm_threshold    = 80
 rds_free_storage_alarm_gib = 5
+
+# AI Study / RAG
+enable_bedrock_ai             = false
+enable_bedrock_embeddings     = false
+bedrock_region                 = "us-east-1"
+bedrock_model_id               = "amazon.nova-lite-v1:0"
+bedrock_embedding_model_id     = "amazon.titan-embed-text-v2:0"
+bedrock_embedding_dimensions   = 256

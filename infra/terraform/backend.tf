@@ -264,6 +264,18 @@ resource "aws_ecs_task_definition" "backend" {
         value = var.bedrock_model_id
       },
       {
+        name  = "SISAWS_BEDROCK_EMBEDDINGS_ENABLED"
+        value = tostring(var.enable_bedrock_embeddings)
+      },
+      {
+        name  = "SISAWS_BEDROCK_EMBEDDING_MODEL_ID"
+        value = var.bedrock_embedding_model_id
+      },
+      {
+        name  = "SISAWS_BEDROCK_EMBEDDING_DIMENSIONS"
+        value = tostring(var.bedrock_embedding_dimensions)
+      },
+      {
         name  = "SISAWS_RATE_LIMIT_LOGIN_IP_LIMIT"
         value = tostring(var.auth_login_ip_limit)
       },

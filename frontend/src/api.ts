@@ -170,6 +170,7 @@ export type MaterialAiAnswer = {
   answer: string
   generatedByBedrock: boolean
   generationMode: string
+  retrievalMode: string
   sources: {chunkNumber: number; excerpt: string}[]
 }
 

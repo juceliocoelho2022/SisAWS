@@ -191,3 +191,26 @@ variable "bedrock_model_id" {
   type        = string
   default     = "amazon.nova-lite-v1:0"
 }
+
+variable "enable_bedrock_embeddings" {
+  description = "Enable semantic retrieval embeddings for academic materials using Amazon Bedrock."
+  type        = bool
+  default     = false
+}
+
+variable "bedrock_embedding_model_id" {
+  description = "Amazon Bedrock embedding model ID used for semantic retrieval."
+  type        = string
+  default     = "amazon.titan-embed-text-v2:0"
+}
+
+variable "bedrock_embedding_dimensions" {
+  description = "Embedding vector dimensions. Titan Text Embeddings V2 supports 256, 512, or 1024."
+  type        = number
+  default     = 256
+
+  validation {
+    condition     = contains([256, 512, 1024], var.bedrock_embedding_dimensions)
+    error_message = "bedrock_embedding_dimensions must be 256, 512, or 1024."
+  }
+}

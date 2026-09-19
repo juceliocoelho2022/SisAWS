@@ -1073,6 +1073,7 @@ export default function App() {
                                   <Bot size={19}/>
                                   <strong>Resposta do tutor</strong>
                                   <span>{materialAiAnswer.generationMode}</span>
+                                  <span>{materialAiAnswer.retrievalMode}</span>
                                 </div>
                                 <p>{materialAiAnswer.answer}</p>
                                 <div className="ai-sources">
