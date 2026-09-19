@@ -226,10 +226,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     '/auth/reset-password'
   ].some(publicPath => path.startsWith(publicPath))
 
-  if (response.status === 401 && !publicAuthPath) {
-    clearSession()
-    window.dispatchEvent(new Event('sisaws:unauthorized'))
-    throw new Error('Sua sessão expirou. Entre novamente.')
+  if (response.status === 401) {
+    if (path.startsWith('/auth/login')) {
+      throw new Error('E-mail ou senha inválidos.')
+    }
+
+    if (!publicAuthPath) {
+      clearSession()
+      window.dispatchEvent(new Event('sisaws:unauthorized'))
+      throw new Error('Sua sessão expirou. Entre novamente.')
+    }
   }
 
   if (!response.ok) {
