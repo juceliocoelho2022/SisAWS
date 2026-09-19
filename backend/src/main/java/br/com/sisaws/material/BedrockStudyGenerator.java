@@ -42,7 +42,8 @@ public class BedrockStudyGenerator {
             return new StudyGuide(
                     "Conteúdo indexado com sucesso. Ative o Amazon Bedrock para gerar um resumo pedagógico automático.",
                     "O material já está disponível para busca contextual e RAG.",
-                    List.of()
+                    List.of(),
+                    false
             );
         }
 
@@ -74,20 +75,25 @@ public class BedrockStudyGenerator {
 
         try {
             String output = converse(prompt, 1800, 0.2F);
-            return parseGuide(output);
+            StudyGuide guide = parseGuide(output);
+            return new StudyGuide(guide.summary(), guide.keyPoints(), guide.flashcards(), true);
         } catch (RuntimeException exception) {
-            log.warn("Bedrock study guide generation failed: {}", exception.getMessage());
+            log.warn("Bedrock study guide generation failed", exception);
             return new StudyGuide(
                     "O material foi indexado, mas o resumo generativo não pôde ser criado neste momento.",
                     "Use o chat contextual ou reprocesse o material quando o Bedrock estiver disponível.",
-                    List.of()
+                    List.of(),
+                    false
             );
         }
     }
 
-    public String answer(String title, String question, String context) {
+    public AnswerResult answer(String title, String question, String context) {
         if (!enabled) {
-            return "O conteúdo foi indexado. Ative o Amazon Bedrock para gerar uma resposta sintetizada; consulte os trechos recuperados abaixo.";
+            return new AnswerResult(
+                    "O conteúdo foi indexado. Ative o Amazon Bedrock para gerar uma resposta sintetizada; consulte os trechos recuperados abaixo.",
+                    false
+            );
         }
 
         String prompt = """
@@ -107,10 +113,13 @@ public class BedrockStudyGenerator {
                 """.formatted(title, question, context);
 
         try {
-            return converse(prompt, 1000, 0.1F);
+            return new AnswerResult(converse(prompt, 1000, 0.1F), true);
         } catch (RuntimeException exception) {
-            log.warn("Bedrock question answering failed: {}", exception.getMessage());
-            return "O Amazon Bedrock não respondeu neste momento. Os trechos recuperados continuam disponíveis abaixo para consulta.";
+            log.warn("Bedrock question answering failed", exception);
+            return new AnswerResult(
+                    "O Amazon Bedrock não respondeu neste momento. Os trechos recuperados continuam disponíveis abaixo para consulta.",
+                    false
+            );
         }
     }
 
@@ -157,7 +166,8 @@ public class BedrockStudyGenerator {
         return new StudyGuide(
                 summary.isBlank() ? "Resumo não estruturado pelo modelo." : summary,
                 keyPoints.isBlank() ? "Consulte os trechos do material." : keyPoints,
-                flashcards.stream().limit(8).toList()
+                flashcards.stream().limit(8).toList(),
+                true
         );
     }
 
@@ -169,6 +179,12 @@ public class BedrockStudyGenerator {
         return (end < 0 ? text.substring(start) : text.substring(start, end)).trim();
     }
 
-    public record StudyGuide(String summary, String keyPoints, List<GeneratedFlashcard> flashcards) {}
+    public record StudyGuide(
+            String summary,
+            String keyPoints,
+            List<GeneratedFlashcard> flashcards,
+            boolean generatedByBedrock
+    ) {}
+    public record AnswerResult(String text, boolean generatedByBedrock) {}
     public record GeneratedFlashcard(String question, String answer) {}
 }

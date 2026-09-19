@@ -70,7 +70,9 @@ public class MaterialAiService {
                 material,
                 guide.summary(),
                 guide.keyPoints(),
-                generator.isEnabled() ? "BEDROCK" : "INDEX_ONLY",
+                guide.generatedByBedrock()
+                        ? "BEDROCK"
+                        : (generator.isEnabled() ? "BEDROCK_FALLBACK" : "INDEX_ONLY"),
                 chunks.size()
         ));
 
@@ -117,11 +119,12 @@ public class MaterialAiService {
                 .map(item -> "[Trecho " + (item.chunk().getChunkIndex() + 1) + "]\n" + item.chunk().getContent())
                 .collect(Collectors.joining("\n\n"));
 
-        String answer = generator.answer(material.getTitle(), question, context);
+        BedrockStudyGenerator.AnswerResult answer =
+                generator.answer(material.getTitle(), question, context);
 
         return new AskResponse(
-                answer,
-                generator.isEnabled(),
+                answer.text(),
+                answer.generatedByBedrock(),
                 selected.stream()
                         .map(item -> new SourceResponse(
                                 item.chunk().getChunkIndex() + 1,
