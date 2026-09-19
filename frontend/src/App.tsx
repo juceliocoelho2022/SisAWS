@@ -153,6 +153,7 @@ export default function App() {
 
     getMe()
       .then(userResponse => {
+        resetPersonalState()
         setUser(userResponse)
         setAuthNotice('')
       })
@@ -494,27 +495,42 @@ export default function App() {
     })
   }
 
-  function logout() {
-    clearSession()
-    setUser(null)
+  function resetPersonalState() {
     setDashboard(null)
     setRecommendation(null)
     setAdaptivePlan(null)
     setQuestions([])
     setErrorEntries([])
-    setTrails([])
-    setMaterials([])
     setSelectedMaterial(null)
     setMaterialAi(null)
     setMaterialAiAnswer(null)
-    setFlashcards([])
+    setMaterialAiQuestion('')
     setServiceProgress([])
     setHistory([])
     setStudyFeedback({})
     setReviewQuestionIds(new Set())
+    setAnswers({})
+    setRevealedCards(new Set())
     setResult(null)
+    setIndex(0)
+    setSecondsRemaining(EXAM_DURATION_SECONDS)
+    setFinishing(false)
     setPage('dashboard')
     setError('')
+  }
+
+  function switchAuthenticatedUser(authenticatedUser: AuthUser) {
+    resetPersonalState()
+    setUser(authenticatedUser)
+  }
+
+  function logout() {
+    clearSession()
+    resetPersonalState()
+    setUser(null)
+    setTrails([])
+    setMaterials([])
+    setFlashcards([])
   }
 
   const resultMap = useMemo(
@@ -534,7 +550,7 @@ export default function App() {
         notice={authNotice}
         onAuthenticated={authenticatedUser => {
           setAuthNotice('')
-          setUser(authenticatedUser)
+          switchAuthenticatedUser(authenticatedUser)
         }}
       />
     )
