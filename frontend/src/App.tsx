@@ -954,7 +954,7 @@ export default function App() {
                           <div>
                             <p className="eyebrow">SISAWS AI STUDY</p>
                             <h3><Bot size={20}/> Tutor do material</h3>
-                            <p>O RAG usa somente trechos extraídos deste material e mostra as fontes recuperadas.</p>
+                            <p>O RAG usa somente trechos extraídos deste material, mostra as fontes recuperadas e trata o documento como dado não confiável.</p>
                           </div>
                           {user.role === 'INSTRUCTOR' && (
                             <button className="secondary" onClick={processSelectedMaterialAi} disabled={materialAiBusy}>
@@ -1027,7 +1027,7 @@ export default function App() {
                                 </div>
                                 <p>{materialAiAnswer.answer}</p>
                                 <div className="ai-sources">
-                                  <strong>Trechos recuperados</strong>
+                                  <strong>Trechos recuperados — confira a fonte antes de memorizar</strong>
                                   {materialAiAnswer.sources.map(source => (
                                     <blockquote key={source.chunkNumber}>
                                       <span>Trecho {source.chunkNumber}</span>
