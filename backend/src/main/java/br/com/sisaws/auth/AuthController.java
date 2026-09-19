@@ -14,25 +14,35 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final AuthRateLimiter rateLimiter;
 
-    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
+    public AuthController(AuthService authService,
+                          PasswordResetService passwordResetService,
+                          AuthRateLimiter rateLimiter) {
         this.authService = authService;
         this.passwordResetService = passwordResetService;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/register")
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request,
+                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
+        rateLimiter.checkRegister(httpRequest);
         return response(authService.register(request.name(), request.email(), request.password()));
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request,
+                              jakarta.servlet.http.HttpServletRequest httpRequest) {
+        rateLimiter.checkLogin(httpRequest, request.email());
         return response(authService.login(request.email(), request.password()));
     }
 
     @PostMapping("/forgot-password")
     @ResponseStatus(org.springframework.http.HttpStatus.ACCEPTED)
-    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+                                          jakarta.servlet.http.HttpServletRequest httpRequest) {
+        rateLimiter.checkForgotPassword(httpRequest, request.email());
         passwordResetService.requestReset(request.email());
         return new MessageResponse(
                 "Se existir uma conta com este e-mail, enviaremos um link temporário para redefinir a senha."
@@ -41,7 +51,9 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+                              jakarta.servlet.http.HttpServletRequest httpRequest) {
+        rateLimiter.checkResetPassword(httpRequest);
         passwordResetService.resetPassword(request.token(), request.newPassword());
     }
 

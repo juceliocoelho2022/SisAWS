@@ -124,3 +124,39 @@ variable "password_reset_ttl_minutes" {
     error_message = "password_reset_ttl_minutes must be between 5 and 60."
   }
 }
+
+variable "auth_login_ip_limit" {
+  description = "Maximum login attempts per source IP in a 60 second window."
+  type        = number
+  default     = 10
+}
+
+variable "auth_login_email_limit" {
+  description = "Maximum login attempts per email in a 5 minute window."
+  type        = number
+  default     = 5
+}
+
+variable "auth_forgot_ip_limit" {
+  description = "Maximum password recovery requests per source IP in a 15 minute window."
+  type        = number
+  default     = 5
+}
+
+variable "auth_forgot_email_limit" {
+  description = "Maximum password recovery requests per email in a 15 minute window."
+  type        = number
+  default     = 3
+}
+
+variable "auth_reset_ip_limit" {
+  description = "Maximum password reset submissions per source IP in a 5 minute window."
+  type        = number
+  default     = 5
+}
+
+variable "auth_register_ip_limit" {
+  description = "Maximum account registration attempts per source IP in a 15 minute window."
+  type        = number
+  default     = 5
+}

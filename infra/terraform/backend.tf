@@ -238,6 +238,30 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "SISAWS_PASSWORD_RESET_BASE_URL"
         value = local.frontend_origin
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_LOGIN_IP_LIMIT"
+        value = tostring(var.auth_login_ip_limit)
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_LOGIN_EMAIL_LIMIT"
+        value = tostring(var.auth_login_email_limit)
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_FORGOT_IP_LIMIT"
+        value = tostring(var.auth_forgot_ip_limit)
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_FORGOT_EMAIL_LIMIT"
+        value = tostring(var.auth_forgot_email_limit)
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_RESET_IP_LIMIT"
+        value = tostring(var.auth_reset_ip_limit)
+      },
+      {
+        name  = "SISAWS_RATE_LIMIT_REGISTER_IP_LIMIT"
+        value = tostring(var.auth_register_ip_limit)
       }
     ]
 

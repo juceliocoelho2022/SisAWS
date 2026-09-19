@@ -29,3 +29,11 @@ rds_free_storage_alarm_gib = 5
 # Password recovery (Amazon SES)
 password_reset_from_email = ""
 password_reset_ttl_minutes = 15
+
+# Authentication abuse protection
+auth_login_ip_limit       = 10
+auth_login_email_limit    = 5
+auth_forgot_ip_limit      = 5
+auth_forgot_email_limit   = 3
+auth_reset_ip_limit       = 5
+auth_register_ip_limit    = 5
