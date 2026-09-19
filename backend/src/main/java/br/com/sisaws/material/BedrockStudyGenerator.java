@@ -126,8 +126,9 @@ public class BedrockStudyGenerator {
                 .message()
                 .content()
                 .stream()
-                .filter(ContentBlock::isText)
                 .map(ContentBlock::text)
+                .filter(java.util.Objects::nonNull)
+                .filter(text -> !text.isBlank())
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Bedrock returned no text"));
     }
