@@ -58,6 +58,10 @@ public class AppUser implements UserDetails {
         this.passwordHash = passwordHash;
     }
 
+    public void promoteToInstructor() {
+        this.role = Role.INSTRUCTOR;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

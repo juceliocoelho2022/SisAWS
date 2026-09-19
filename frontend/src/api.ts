@@ -123,6 +123,43 @@ export type Flashcard = {
   answer: string
 }
 
+export type StudyMaterial = {
+  id: number
+  title: string
+  author: string
+  materialType: 'PDF' | 'DOCX' | 'EPUB'
+  licenseType: 'OWNED' | 'LICENSED' | 'PUBLIC_DOMAIN' | 'OPEN_LICENSE' | 'INTERNAL'
+  awsService: string
+  saaDomain: string
+  estimatedMinutes: number
+  fileSize: number
+  chapterCount: number
+  completedChapters: number
+  progressPercent: number
+}
+
+export type StudyChapter = {
+  id: number
+  chapterNumber: number
+  title: string
+  description?: string
+  awsService: string
+  saaDomain: string
+  estimatedMinutes: number
+  completed: boolean
+}
+
+export type StudyMaterialDetail = {
+  material: StudyMaterial
+  description?: string
+  publisher?: string
+  edition?: string
+  publicationYear?: number
+  isbn?: string
+  sourceUrl?: string
+  chapters: StudyChapter[]
+}
+
 export type HistoryAttempt = {
   id: number
   certificationCode: string
@@ -148,7 +185,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getStoredToken()
   const headers = new Headers(init.headers)
 
-  if (init.body && !headers.has('Content-Type')) {
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -272,5 +309,31 @@ export function finishSimulation(
   return request<SimulationResult>('/simulations/finish', {
     method: 'POST',
     body: JSON.stringify({certificationCode: 'SAA-C03', answers})
+  })
+}
+
+
+export function getStudyMaterials(): Promise<StudyMaterial[]> {
+  return request<StudyMaterial[]>('/materials')
+}
+
+export function getStudyMaterial(id: number): Promise<StudyMaterialDetail> {
+  return request<StudyMaterialDetail>(`/materials/${id}`)
+}
+
+export function getStudyMaterialAccess(id: number): Promise<{url: string; expiresInSeconds: number}> {
+  return request<{url: string; expiresInSeconds: number}>(`/materials/${id}/access`)
+}
+
+export function completeStudyChapter(materialId: number, chapterId: number): Promise<StudyMaterialDetail> {
+  return request<StudyMaterialDetail>(`/materials/${materialId}/chapters/${chapterId}/complete`, {
+    method: 'POST'
+  })
+}
+
+export function uploadStudyMaterial(form: FormData): Promise<StudyMaterialDetail> {
+  return request<StudyMaterialDetail>('/materials/upload', {
+    method: 'POST',
+    body: form
   })
 }

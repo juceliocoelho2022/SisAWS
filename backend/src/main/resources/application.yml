@@ -14,6 +14,10 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 27MB
 
 server:
   port: 8080
@@ -34,6 +38,10 @@ sisaws:
       from-email: ${SISAWS_PASSWORD_RESET_FROM_EMAIL:}
       base-url: ${SISAWS_PASSWORD_RESET_BASE_URL:http://localhost:5173}
       aws-region: ${AWS_REGION:sa-east-1}
+    library:
+      bucket: ${SISAWS_STUDY_MATERIALS_BUCKET:}
+      aws-region: ${AWS_REGION:sa-east-1}
+      max-file-size-mb: ${SISAWS_STUDY_MATERIAL_MAX_FILE_MB:25}
     rate-limit:
       login-ip-limit: ${SISAWS_RATE_LIMIT_LOGIN_IP_LIMIT:10}
       login-email-limit: ${SISAWS_RATE_LIMIT_LOGIN_EMAIL_LIMIT:5}
@@ -41,5 +49,7 @@ sisaws:
       forgot-email-limit: ${SISAWS_RATE_LIMIT_FORGOT_EMAIL_LIMIT:3}
       reset-ip-limit: ${SISAWS_RATE_LIMIT_RESET_IP_LIMIT:5}
       register-ip-limit: ${SISAWS_RATE_LIMIT_REGISTER_IP_LIMIT:5}
+  instructor:
+    emails: ${SISAWS_INSTRUCTOR_EMAILS:}
   cors:
     allowed-origins: ${SISAWS_CORS_ALLOWED_ORIGINS:http://localhost:5173}

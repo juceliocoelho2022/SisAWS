@@ -13,6 +13,10 @@ import {
   GraduationCap,
   History,
   Lightbulb,
+  LibraryBig,
+  FileText,
+  ExternalLink,
+  Upload,
   LogOut,
   NotebookPen,
   PlayCircle,
@@ -37,6 +41,8 @@ import {
   ServiceProgress,
   SimulationResult,
   StudyTrail,
+  StudyMaterial,
+  StudyMaterialDetail,
   checkAnswer,
   clearSession,
   finishSimulation,
@@ -51,13 +57,18 @@ import {
   getRecommendation,
   getStoredToken,
   getTrails,
+  getStudyMaterials,
+  getStudyMaterial,
+  getStudyMaterialAccess,
+  completeStudyChapter,
+  uploadStudyMaterial,
   login,
   register,
   requestPasswordReset,
   resetPassword
 } from './api'
 
-type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress' | 'adaptive'
+type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'library' | 'flashcards' | 'progress' | 'adaptive'
 type Theme = 'light' | 'moderate' | 'dark'
 type SimulationMode = 'study' | 'exam'
 
@@ -90,6 +101,9 @@ export default function App() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [errorEntries, setErrorEntries] = useState<ErrorNotebookEntry[]>([])
   const [trails, setTrails] = useState<StudyTrail[]>([])
+  const [materials, setMaterials] = useState<StudyMaterial[]>([])
+  const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterialDetail | null>(null)
+  const [materialBusy, setMaterialBusy] = useState(false)
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress[]>([])
   const [history, setHistory] = useState<HistoryAttempt[]>([])
@@ -216,6 +230,65 @@ export default function App() {
       setError('')
     } catch {
       setError('Não foi possível carregar o Caderno de Erros.')
+    }
+  }
+
+  async function openLibrary() {
+    try {
+      const loaded = await getStudyMaterials()
+      setMaterials(loaded)
+      setSelectedMaterial(null)
+      setPage('library')
+      setError('')
+    } catch {
+      setError('Não foi possível carregar a Biblioteca Acadêmica.')
+    }
+  }
+
+  async function viewMaterial(id: number) {
+    try {
+      setSelectedMaterial(await getStudyMaterial(id))
+      setError('')
+    } catch {
+      setError('Não foi possível carregar os detalhes do material.')
+    }
+  }
+
+  async function openMaterialFile(id: number) {
+    try {
+      const access = await getStudyMaterialAccess(id)
+      window.open(access.url, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível abrir o material.')
+    }
+  }
+
+  async function completeMaterialChapter(materialId: number, chapterId: number) {
+    try {
+      const detail = await completeStudyChapter(materialId, chapterId)
+      setSelectedMaterial(detail)
+      setMaterials(await getStudyMaterials())
+      setError('')
+    } catch {
+      setError('Não foi possível atualizar o progresso da leitura.')
+    }
+  }
+
+  async function publishMaterial(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    setMaterialBusy(true)
+    setError('')
+
+    try {
+      const detail = await uploadStudyMaterial(new FormData(form))
+      form.reset()
+      setMaterials(await getStudyMaterials())
+      setSelectedMaterial(detail)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível publicar o material.')
+    } finally {
+      setMaterialBusy(false)
     }
   }
 
@@ -360,6 +433,8 @@ export default function App() {
     setQuestions([])
     setErrorEntries([])
     setTrails([])
+    setMaterials([])
+    setSelectedMaterial(null)
     setFlashcards([])
     setServiceProgress([])
     setHistory([])
@@ -388,6 +463,7 @@ export default function App() {
     simulation: 'Simulados SAA-C03',
     errors: 'Caderno de Erros',
     trails: 'Trilhas AWS',
+    library: 'Biblioteca Acadêmica',
     flashcards: 'Flashcards',
     progress: 'Meu Progresso',
     adaptive: 'Revisão Inteligente'
@@ -402,6 +478,7 @@ export default function App() {
           <button className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}><Gauge/> Dashboard</button>
           <button className={page === 'simulation' ? 'active' : ''} onClick={() => openSimulationSetup()}><BookOpenCheck/> Simulados</button>
           <button className={page === 'trails' ? 'active' : ''} onClick={openTrails}><BookOpen/> Trilhas AWS</button>
+          <button className={page === 'library' ? 'active' : ''} onClick={openLibrary}><LibraryBig/> Biblioteca Acadêmica</button>
           <button className={page === 'flashcards' ? 'active' : ''} onClick={openFlashcards}><Brain/> Flashcards</button>
           <button className={page === 'progress' ? 'active' : ''} onClick={openProgress}><BarChart3/> Meu Progresso</button>
           <button className={page === 'adaptive' ? 'active' : ''} onClick={openAdaptive}><Sparkles/> Revisão Inteligente</button>
@@ -417,7 +494,7 @@ export default function App() {
             <span>{user.email}</span>
           </div>
         </div>
-        <div className="version">v2.0 • AWS Cloud Ready</div>
+        <div className="version">v2.2 • Learning Library</div>
       </aside>
 
       <main>
@@ -670,6 +747,156 @@ export default function App() {
               <div className="quiz-actions">
                 <button onClick={openProgress}>Ver progresso</button>
                 <button className="primary" onClick={() => startSimulation(simulationService, simulationDifficulty)}>Repetir prática</button>
+              </div>
+            </section>
+          </div>
+        )}
+
+
+        {page === 'library' && (
+          <div className="page-content library-page">
+            <section className="library-shell">
+              <div className="library-heading">
+                <div>
+                  <p className="eyebrow">BIBLIOTECA ACADÊMICA</p>
+                  <h2>Estude o conteúdo antes de ir para o simulado.</h2>
+                  <p>Materiais com referência acadêmica, licença registrada, progresso de leitura e prática ligada aos serviços AWS.</p>
+                </div>
+                <div className="library-stat">
+                  <strong>{materials.length}</strong>
+                  <span>materiais</span>
+                </div>
+              </div>
+
+              {user.role === 'INSTRUCTOR' && (
+                <form className="material-upload" onSubmit={publishMaterial}>
+                  <div className="section-heading compact">
+                    <div>
+                      <p className="eyebrow">ÁREA DO INSTRUTOR</p>
+                      <h3>Publicar material</h3>
+                    </div>
+                    <Upload size={23}/>
+                  </div>
+                  <div className="material-form-grid">
+                    <label>Título<input name="title" required maxLength={220} placeholder="Ex.: Fundamentos de Amazon S3"/></label>
+                    <label>Autor<input name="author" required maxLength={180} placeholder="Autor ou instituição"/></label>
+                    <label>Serviço AWS
+                      <select name="awsService" required defaultValue="S3">
+                        {SERVICES.filter(Boolean).map(service => <option key={service}>{service}</option>)}
+                      </select>
+                    </label>
+                    <label>Domínio SAA-C03
+                      <select name="saaDomain" required defaultValue="Design Resilient Architectures">
+                        <option>Design Secure Architectures</option>
+                        <option>Design Resilient Architectures</option>
+                        <option>Design High-Performing Architectures</option>
+                        <option>Design Cost-Optimized Architectures</option>
+                      </select>
+                    </label>
+                    <label>Licença
+                      <select name="licenseType" required defaultValue="INTERNAL">
+                        <option value="INTERNAL">Material interno</option>
+                        <option value="OWNED">Autoral / próprio</option>
+                        <option value="LICENSED">Licenciado</option>
+                        <option value="OPEN_LICENSE">Licença aberta</option>
+                        <option value="PUBLIC_DOMAIN">Domínio público</option>
+                      </select>
+                    </label>
+                    <label>Tempo estimado (min)<input name="estimatedMinutes" type="number" min={1} defaultValue={30} required/></label>
+                    <label>Editora<input name="publisher" placeholder="Opcional"/></label>
+                    <label>Edição<input name="edition" placeholder="Opcional"/></label>
+                    <label>Ano<input name="publicationYear" type="number" min={1900} max={2100} placeholder="2026"/></label>
+                    <label>ISBN<input name="isbn" placeholder="Opcional"/></label>
+                    <label className="wide-field">Fonte / URL<input name="sourceUrl" type="url" placeholder="https://..."/></label>
+                    <label className="wide-field">Descrição<textarea name="description" rows={3} placeholder="Objetivos, escopo e orientação de estudo."/></label>
+                    <label className="wide-field file-field">Arquivo PDF, DOCX ou EPUB<input name="file" type="file" accept=".pdf,.docx,.epub" required/></label>
+                  </div>
+                  <button className="primary material-publish" disabled={materialBusy}>
+                    <Upload size={17}/> {materialBusy ? 'Publicando...' : 'Publicar na biblioteca'}
+                  </button>
+                </form>
+              )}
+
+              <div className="library-layout">
+                <div className="material-list">
+                  {materials.length === 0 && (
+                    <div className="library-empty">
+                      <LibraryBig size={34}/>
+                      <strong>Nenhum material publicado ainda.</strong>
+                      <span>Quando um instrutor publicar um PDF, DOCX ou EPUB, ele aparecerá aqui.</span>
+                    </div>
+                  )}
+
+                  {materials.map(material => (
+                    <button className={selectedMaterial?.material.id === material.id ? 'material-card active' : 'material-card'} key={material.id} onClick={() => viewMaterial(material.id)}>
+                      <div className="material-icon"><FileText size={24}/></div>
+                      <div className="material-copy">
+                        <div className="material-meta">
+                          <span>{material.materialType}</span>
+                          <span>{material.awsService}</span>
+                          <span>{material.licenseType.replaceAll('_', ' ')}</span>
+                        </div>
+                        <h3>{material.title}</h3>
+                        <p>{material.author} • {material.estimatedMinutes} min</p>
+                        <div className="material-progress"><span style={{width: `${material.progressPercent}%`}}/></div>
+                        <small>{material.progressPercent}% concluído • {material.completedChapters}/{material.chapterCount} capítulo(s)</small>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="material-detail">
+                  {!selectedMaterial && (
+                    <div className="library-empty detail-empty">
+                      <BookOpen size={34}/>
+                      <strong>Selecione um material</strong>
+                      <span>Veja capítulos, referência acadêmica e progresso de leitura.</span>
+                    </div>
+                  )}
+
+                  {selectedMaterial && (
+                    <>
+                      <div className="material-detail-head">
+                        <div>
+                          <p className="eyebrow">{selectedMaterial.material.awsService} • {selectedMaterial.material.saaDomain}</p>
+                          <h2>{selectedMaterial.material.title}</h2>
+                          <p>{selectedMaterial.description || 'Material de estudo da Biblioteca SisAWS.'}</p>
+                        </div>
+                        <span className="material-score">{selectedMaterial.material.progressPercent}%</span>
+                      </div>
+
+                      <div className="academic-reference">
+                        <strong>Referência acadêmica</strong>
+                        <span>{selectedMaterial.material.author}. <b>{selectedMaterial.material.title}</b>{selectedMaterial.edition ? `. ${selectedMaterial.edition}` : ''}{selectedMaterial.publisher ? `. ${selectedMaterial.publisher}` : ''}{selectedMaterial.publicationYear ? `, ${selectedMaterial.publicationYear}` : ''}.</span>
+                        {selectedMaterial.isbn && <small>ISBN: {selectedMaterial.isbn}</small>}
+                      </div>
+
+                      <div className="material-actions">
+                        <button className="primary" onClick={() => openMaterialFile(selectedMaterial.material.id)}><ExternalLink size={16}/> Abrir material</button>
+                        <button className="secondary" onClick={() => openSimulationSetup(selectedMaterial.material.awsService)}><Target size={16}/> Praticar este conteúdo</button>
+                      </div>
+
+                      <div className="chapter-list">
+                        <div className="section-heading compact">
+                          <div><p className="eyebrow">PLANO DE LEITURA</p><h3>Capítulos</h3></div>
+                        </div>
+                        {selectedMaterial.chapters.map(chapter => (
+                          <div className={chapter.completed ? 'chapter-row completed' : 'chapter-row'} key={chapter.id}>
+                            <span className="chapter-number">{String(chapter.chapterNumber).padStart(2, '0')}</span>
+                            <div>
+                              <strong>{chapter.title}</strong>
+                              <p>{chapter.description || chapter.saaDomain}</p>
+                              <small>{chapter.awsService} • {chapter.estimatedMinutes} min</small>
+                            </div>
+                            {chapter.completed
+                              ? <span className="chapter-done"><CheckCircle2 size={17}/> Concluído</span>
+                              : <button className="secondary" onClick={() => completeMaterialChapter(selectedMaterial.material.id, chapter.id)}>Marcar como estudado</button>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </section>
           </div>

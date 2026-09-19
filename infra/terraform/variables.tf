@@ -160,3 +160,16 @@ variable "auth_register_ip_limit" {
   type        = number
   default     = 5
 }
+
+variable "study_material_max_file_mb" {
+  description = "Maximum academic material upload size in megabytes."
+  type        = number
+  default     = 25
+}
+
+variable "instructor_emails" {
+  description = "Comma-separated emails promoted to INSTRUCTOR at login. Keep this value only in local terraform.tfvars."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

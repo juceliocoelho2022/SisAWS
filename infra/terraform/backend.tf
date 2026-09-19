@@ -240,6 +240,18 @@ resource "aws_ecs_task_definition" "backend" {
         value = local.frontend_origin
       },
       {
+        name  = "SISAWS_STUDY_MATERIALS_BUCKET"
+        value = aws_s3_bucket.study_materials.id
+      },
+      {
+        name  = "SISAWS_STUDY_MATERIAL_MAX_FILE_MB"
+        value = tostring(var.study_material_max_file_mb)
+      },
+      {
+        name  = "SISAWS_INSTRUCTOR_EMAILS"
+        value = var.instructor_emails
+      },
+      {
         name  = "SISAWS_RATE_LIMIT_LOGIN_IP_LIMIT"
         value = tostring(var.auth_login_ip_limit)
       },
@@ -318,6 +330,7 @@ resource "aws_ecs_service" "backend" {
     aws_lb_listener.api,
     aws_iam_role_policy_attachment.ecs_execution,
     aws_iam_role_policy.ecs_execution_secrets,
-    aws_iam_role_policy.ecs_task_ses
+    aws_iam_role_policy.ecs_task_ses,
+    aws_iam_role_policy.ecs_task_study_materials
   ]
 }

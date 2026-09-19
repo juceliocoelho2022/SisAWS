@@ -37,3 +37,7 @@ auth_forgot_ip_limit      = 5
 auth_forgot_email_limit   = 3
 auth_reset_ip_limit       = 5
 auth_register_ip_limit    = 5
+
+# Academic Library
+study_material_max_file_mb = 25
+instructor_emails          = ""
