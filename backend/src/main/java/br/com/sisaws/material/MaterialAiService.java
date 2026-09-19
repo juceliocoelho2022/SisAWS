@@ -25,6 +25,8 @@ public class MaterialAiService {
     private final MaterialExtractionService extraction;
     private final BedrockStudyGenerator generator;
     private final LocalStudyGenerator localGenerator;
+    private final MaterialEmbeddingProvider embeddingProvider;
+    private final MaterialRetriever retriever;
 
     public MaterialAiService(
             StudyMaterialRepository materialRepository,
@@ -34,7 +36,9 @@ public class MaterialAiService {
             MaterialStorageService storage,
             MaterialExtractionService extraction,
             BedrockStudyGenerator generator,
-            LocalStudyGenerator localGenerator) {
+            LocalStudyGenerator localGenerator,
+            MaterialEmbeddingProvider embeddingProvider,
+            MaterialRetriever retriever) {
         this.materialRepository = materialRepository;
         this.chunkRepository = chunkRepository;
         this.profileRepository = profileRepository;
@@ -43,6 +47,8 @@ public class MaterialAiService {
         this.extraction = extraction;
         this.generator = generator;
         this.localGenerator = localGenerator;
+        this.embeddingProvider = embeddingProvider;
+        this.retriever = retriever;
     }
 
     @Transactional
@@ -61,7 +67,12 @@ public class MaterialAiService {
 
         List<MaterialChunk> chunks = new ArrayList<>();
         for (int i = 0; i < extracted.chunks().size(); i++) {
-            chunks.add(new MaterialChunk(material, i, extracted.chunks().get(i)));
+            MaterialChunk chunk = new MaterialChunk(material, i, extracted.chunks().get(i));
+
+            embeddingProvider.embed(MaterialTextCleaner.cleanForStudy(chunk.getContent()))
+                    .ifPresent(chunk::setEmbedding);
+
+            chunks.add(chunk);
         }
         chunkRepository.saveAll(chunks);
 
@@ -140,7 +151,9 @@ public class MaterialAiService {
             );
         }
 
-        List<ScoredChunk> selected = retrieve(question, chunks);
+        MaterialRetriever.RetrievalResult retrieval = retriever.retrieve(question, chunks, 4);
+        List<MaterialRetriever.ScoredChunk> selected = retrieval.chunks();
+
         String context = selected.stream()
                 .map(item -> "[Trecho " + (item.chunk().getChunkIndex() + 1) + "]\n" + item.chunk().getContent())
                 .collect(Collectors.joining("\n\n"));
@@ -167,6 +180,7 @@ public class MaterialAiService {
                 answer,
                 bedrockAnswer.generatedByBedrock(),
                 generationMode,
+                retrieval.mode(),
                 selected.stream()
                         .map(item -> new SourceResponse(
                                 item.chunk().getChunkIndex() + 1,
@@ -174,36 +188,6 @@ public class MaterialAiService {
                         ))
                         .toList()
         );
-    }
-
-    private List<ScoredChunk> retrieve(String question, List<MaterialChunk> chunks) {
-        Set<String> terms = tokenize(question);
-
-        List<ScoredChunk> scored = chunks.stream()
-                .map(chunk -> new ScoredChunk(chunk, score(chunk.getContent(), terms)))
-                .sorted(Comparator.comparingInt(ScoredChunk::score).reversed()
-                        .thenComparingInt(item -> item.chunk().getChunkIndex()))
-                .toList();
-
-        List<ScoredChunk> positive = scored.stream()
-                .filter(item -> item.score() > 0)
-                .limit(4)
-                .toList();
-
-        return positive.isEmpty() ? scored.stream().limit(4).toList() : positive;
-    }
-
-    private int score(String content, Set<String> terms) {
-        String normalized = normalize(content);
-        int score = 0;
-        for (String term : terms) {
-            int index = 0;
-            while ((index = normalized.indexOf(term, index)) >= 0) {
-                score++;
-                index += term.length();
-            }
-        }
-        return Math.max(0, score - MaterialTextCleaner.rankingPenalty(content));
     }
 
     private Set<String> tokenize(String value) {
@@ -255,8 +239,6 @@ public class MaterialAiService {
         return material;
     }
 
-    private record ScoredChunk(MaterialChunk chunk, int score) {}
-
     public record AiOverview(
             boolean processed,
             boolean bedrockEnabled,
@@ -274,6 +256,7 @@ public class MaterialAiService {
             String answer,
             boolean generatedByBedrock,
             String generationMode,
+            String retrievalMode,
             List<SourceResponse> sources
     ) {}
 }

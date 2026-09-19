@@ -29,6 +29,13 @@ public class MaterialChunk {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Lob
+    @Column(name = "embedding_vector", columnDefinition = "TEXT")
+    private String embeddingVector;
+
+    @Column(name = "embedding_model", length = 160)
+    private String embeddingModel;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -45,4 +52,20 @@ public class MaterialChunk {
     public StudyMaterial getMaterial() { return material; }
     public int getChunkIndex() { return chunkIndex; }
     public String getContent() { return content; }
+    public String getEmbeddingModel() { return embeddingModel; }
+
+    public java.util.Optional<float[]> getEmbeddingVector() {
+        return MaterialEmbeddingCodec.decode(embeddingVector);
+    }
+
+    public void setEmbedding(MaterialEmbeddingProvider.EmbeddingVector embedding) {
+        if (embedding == null || embedding.values() == null || embedding.values().length == 0) {
+            this.embeddingVector = null;
+            this.embeddingModel = null;
+            return;
+        }
+
+        this.embeddingVector = MaterialEmbeddingCodec.encode(embedding.values());
+        this.embeddingModel = embedding.modelId();
+    }
 }
