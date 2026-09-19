@@ -173,3 +173,21 @@ variable "instructor_emails" {
   default     = ""
   sensitive   = true
 }
+
+variable "enable_bedrock_ai" {
+  description = "Enable generative AI for academic materials using Amazon Bedrock."
+  type        = bool
+  default     = false
+}
+
+variable "bedrock_region" {
+  description = "AWS region used by Amazon Bedrock Runtime."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "bedrock_model_id" {
+  description = "Amazon Bedrock model ID used by the SisAWS study tutor."
+  type        = string
+  default     = "amazon.nova-lite-v1:0"
+}

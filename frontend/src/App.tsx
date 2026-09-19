@@ -5,6 +5,7 @@ import {
   BookOpen,
   BookOpenCheck,
   Brain,
+  Bot,
   Cloud,
   CheckCircle2,
   Clock3,
@@ -17,6 +18,8 @@ import {
   FileText,
   ExternalLink,
   Upload,
+  WandSparkles,
+  Send,
   LogOut,
   NotebookPen,
   PlayCircle,
@@ -43,6 +46,8 @@ import {
   StudyTrail,
   StudyMaterial,
   StudyMaterialDetail,
+  MaterialAiOverview,
+  MaterialAiAnswer,
   checkAnswer,
   clearSession,
   finishSimulation,
@@ -62,6 +67,9 @@ import {
   getStudyMaterialAccess,
   completeStudyChapter,
   uploadStudyMaterial,
+  getMaterialAi,
+  processMaterialAi,
+  askMaterialAi,
   login,
   register,
   requestPasswordReset,
@@ -103,6 +111,10 @@ export default function App() {
   const [trails, setTrails] = useState<StudyTrail[]>([])
   const [materials, setMaterials] = useState<StudyMaterial[]>([])
   const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterialDetail | null>(null)
+  const [materialAi, setMaterialAi] = useState<MaterialAiOverview | null>(null)
+  const [materialAiAnswer, setMaterialAiAnswer] = useState<MaterialAiAnswer | null>(null)
+  const [materialAiQuestion, setMaterialAiQuestion] = useState('')
+  const [materialAiBusy, setMaterialAiBusy] = useState(false)
   const [materialBusy, setMaterialBusy] = useState(false)
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress[]>([])
@@ -238,6 +250,8 @@ export default function App() {
       const loaded = await getStudyMaterials()
       setMaterials(loaded)
       setSelectedMaterial(null)
+      setMaterialAi(null)
+      setMaterialAiAnswer(null)
       setPage('library')
       setError('')
     } catch {
@@ -247,10 +261,47 @@ export default function App() {
 
   async function viewMaterial(id: number) {
     try {
-      setSelectedMaterial(await getStudyMaterial(id))
+      const [detail, ai] = await Promise.all([
+        getStudyMaterial(id),
+        getMaterialAi(id)
+      ])
+      setSelectedMaterial(detail)
+      setMaterialAi(ai)
+      setMaterialAiAnswer(null)
+      setMaterialAiQuestion('')
       setError('')
     } catch {
       setError('Não foi possível carregar os detalhes do material.')
+    }
+  }
+
+  async function processSelectedMaterialAi() {
+    if (!selectedMaterial) return
+    setMaterialAiBusy(true)
+    setError('')
+
+    try {
+      setMaterialAi(await processMaterialAi(selectedMaterial.material.id))
+      setMaterialAiAnswer(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível processar o material com IA.')
+    } finally {
+      setMaterialAiBusy(false)
+    }
+  }
+
+  async function askSelectedMaterialAi(event: FormEvent) {
+    event.preventDefault()
+    if (!selectedMaterial || !materialAiQuestion.trim()) return
+
+    setMaterialAiBusy(true)
+    setError('')
+    try {
+      setMaterialAiAnswer(await askMaterialAi(selectedMaterial.material.id, materialAiQuestion.trim()))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível consultar o material.')
+    } finally {
+      setMaterialAiBusy(false)
     }
   }
 
@@ -285,6 +336,8 @@ export default function App() {
       form.reset()
       setMaterials(await getStudyMaterials())
       setSelectedMaterial(detail)
+      setMaterialAi(await getMaterialAi(detail.material.id))
+      setMaterialAiAnswer(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível publicar o material.')
     } finally {
@@ -435,6 +488,8 @@ export default function App() {
     setTrails([])
     setMaterials([])
     setSelectedMaterial(null)
+    setMaterialAi(null)
+    setMaterialAiAnswer(null)
     setFlashcards([])
     setServiceProgress([])
     setHistory([])
@@ -893,6 +948,99 @@ export default function App() {
                               : <button className="secondary" onClick={() => completeMaterialChapter(selectedMaterial.material.id, chapter.id)}>Marcar como estudado</button>}
                           </div>
                         ))}
+
+                      <section className="material-ai-panel">
+                        <div className="material-ai-heading">
+                          <div>
+                            <p className="eyebrow">SISAWS AI STUDY</p>
+                            <h3><Bot size={20}/> Tutor do material</h3>
+                            <p>O RAG usa somente trechos extraídos deste material e mostra as fontes recuperadas.</p>
+                          </div>
+                          {user.role === 'INSTRUCTOR' && (
+                            <button className="secondary" onClick={processSelectedMaterialAi} disabled={materialAiBusy}>
+                              <WandSparkles size={16}/> {materialAi?.processed ? 'Reprocessar IA' : 'Indexar e gerar guia'}
+                            </button>
+                          )}
+                        </div>
+
+                        {!materialAi?.processed && (
+                          <div className="ai-not-processed">
+                            <Bot size={25}/>
+                            <div>
+                              <strong>Material ainda não indexado para IA.</strong>
+                              <span>Um instrutor precisa executar a indexação antes do chat contextual.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {materialAi?.processed && (
+                          <>
+                            <div className="ai-status-line">
+                              <span>{materialAi.chunkCount} trechos indexados</span>
+                              <span>{materialAi.bedrockEnabled ? 'Amazon Bedrock ativo' : 'RAG local • Bedrock desativado'}</span>
+                              <span>{materialAi.generationMode}</span>
+                            </div>
+
+                            {materialAi.summary && (
+                              <div className="ai-study-guide">
+                                <strong>Resumo de estudo</strong>
+                                <p>{materialAi.summary}</p>
+                                {materialAi.keyPoints && <pre>{materialAi.keyPoints}</pre>}
+                              </div>
+                            )}
+
+                            {materialAi.flashcards.length > 0 && (
+                              <div className="ai-flashcards">
+                                {materialAi.flashcards.map(card => (
+                                  <div className="ai-flashcard" key={card.id}>
+                                    <strong>{card.question}</strong>
+                                    <p>{card.answer}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <form className="material-ai-chat" onSubmit={askSelectedMaterialAi}>
+                              <label>
+                                Pergunte ao material
+                                <div>
+                                  <input
+                                    value={materialAiQuestion}
+                                    onChange={event => setMaterialAiQuestion(event.target.value)}
+                                    maxLength={1200}
+                                    placeholder="Ex.: Qual é a função do Amazon S3 segundo este material?"
+                                    required
+                                  />
+                                  <button className="primary" disabled={materialAiBusy}>
+                                    <Send size={16}/> {materialAiBusy ? 'Consultando...' : 'Perguntar'}
+                                  </button>
+                                </div>
+                              </label>
+                            </form>
+
+                            {materialAiAnswer && (
+                              <div className="ai-answer">
+                                <div className="ai-answer-head">
+                                  <Bot size={19}/>
+                                  <strong>Resposta do tutor</strong>
+                                  <span>{materialAiAnswer.generatedByBedrock ? 'BEDROCK' : 'RAG'}</span>
+                                </div>
+                                <p>{materialAiAnswer.answer}</p>
+                                <div className="ai-sources">
+                                  <strong>Trechos recuperados</strong>
+                                  {materialAiAnswer.sources.map(source => (
+                                    <blockquote key={source.chunkNumber}>
+                                      <span>Trecho {source.chunkNumber}</span>
+                                      {source.excerpt}
+                                    </blockquote>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </section>
+
                       </div>
                     </>
                   )}

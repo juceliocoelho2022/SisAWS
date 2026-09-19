@@ -41,3 +41,8 @@ auth_register_ip_limit    = 5
 # Academic Library
 study_material_max_file_mb = 25
 instructor_emails          = ""
+
+# AI Study / RAG (Amazon Bedrock)
+enable_bedrock_ai = false
+bedrock_region     = "us-east-1"
+bedrock_model_id   = "amazon.nova-lite-v1:0"

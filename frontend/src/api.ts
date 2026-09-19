@@ -149,6 +149,29 @@ export type StudyChapter = {
   completed: boolean
 }
 
+export type MaterialAiFlashcard = {
+  id: number
+  question: string
+  answer: string
+}
+
+export type MaterialAiOverview = {
+  processed: boolean
+  bedrockEnabled: boolean
+  generationMode: string
+  chunkCount: number
+  summary?: string
+  keyPoints?: string
+  flashcards: MaterialAiFlashcard[]
+  processedAt?: string
+}
+
+export type MaterialAiAnswer = {
+  answer: string
+  generatedByBedrock: boolean
+  sources: {chunkNumber: number; excerpt: string}[]
+}
+
 export type StudyMaterialDetail = {
   material: StudyMaterial
   description?: string
@@ -335,5 +358,21 @@ export function uploadStudyMaterial(form: FormData): Promise<StudyMaterialDetail
   return request<StudyMaterialDetail>('/materials/upload', {
     method: 'POST',
     body: form
+  })
+}
+
+
+export function getMaterialAi(id: number): Promise<MaterialAiOverview> {
+  return request<MaterialAiOverview>(`/materials/${id}/ai`)
+}
+
+export function processMaterialAi(id: number): Promise<MaterialAiOverview> {
+  return request<MaterialAiOverview>(`/materials/${id}/ai/process`, {method: 'POST'})
+}
+
+export function askMaterialAi(id: number, question: string): Promise<MaterialAiAnswer> {
+  return request<MaterialAiAnswer>(`/materials/${id}/ai/ask`, {
+    method: 'POST',
+    body: JSON.stringify({question})
   })
 }

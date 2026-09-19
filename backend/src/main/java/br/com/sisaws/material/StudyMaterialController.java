@@ -21,9 +21,11 @@ import java.util.List;
 public class StudyMaterialController {
 
     private final StudyMaterialService service;
+    private final MaterialAiService aiService;
 
-    public StudyMaterialController(StudyMaterialService service) {
+    public StudyMaterialController(StudyMaterialService service, MaterialAiService aiService) {
         this.service = service;
+        this.aiService = aiService;
     }
 
     @GetMapping
@@ -86,6 +88,26 @@ public class StudyMaterialController {
         ));
     }
 
+    @GetMapping("/{materialId}/ai")
+    public MaterialAiService.AiOverview aiOverview(@PathVariable Long materialId) {
+        return aiService.overview(materialId);
+    }
+
+    @PostMapping("/{materialId}/ai/process")
+    public MaterialAiService.AiOverview processAi(
+            @PathVariable Long materialId,
+            Authentication authentication) {
+        requireInstructor(authentication);
+        return aiService.process(materialId);
+    }
+
+    @PostMapping("/{materialId}/ai/ask")
+    public MaterialAiService.AskResponse askAi(
+            @PathVariable Long materialId,
+            @Valid @RequestBody AskMaterialRequest request) {
+        return aiService.ask(materialId, request.question());
+    }
+
     @PostMapping("/{materialId}/chapters/{chapterId}/complete")
     public StudyMaterialService.MaterialDetail completeChapter(
             @PathVariable Long materialId,
@@ -105,6 +127,10 @@ public class StudyMaterialController {
         }
         return user;
     }
+
+    public record AskMaterialRequest(
+            @NotBlank @Size(max = 1200) String question
+    ) {}
 
     public record ChapterRequest(
             @Min(1) int chapterNumber,

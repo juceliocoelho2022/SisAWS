@@ -10,6 +10,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -86,6 +87,16 @@ public class MaterialStorageService {
         }
 
         return new StoredObject(key, materialType, contentType, file.getSize());
+    }
+
+    public byte[] readBytes(String key) {
+        requireConfigured();
+        return s3.getObjectAsBytes(
+                GetObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .build()
+        ).asByteArray();
     }
 
     public String createReadUrl(String key) {
