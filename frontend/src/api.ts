@@ -196,6 +196,20 @@ export async function register(name: string, email: string, password: string): P
   return response
 }
 
+export function requestPasswordReset(email: string): Promise<{message: string}> {
+  return request<{message: string}>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({email})
+  })
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<void> {
+  return request<void>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({token, newPassword})
+  })
+}
+
 export function getMe(): Promise<AuthUser> {
   return request<AuthUser>('/auth/me')
 }

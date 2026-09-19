@@ -52,7 +52,9 @@ import {
   getStoredToken,
   getTrails,
   login,
-  register
+  register,
+  requestPasswordReset,
+  resetPassword
 } from './api'
 
 type Page = 'dashboard' | 'simulation' | 'errors' | 'trails' | 'flashcards' | 'progress' | 'adaptive'
@@ -934,30 +936,69 @@ function AuthScreen({
   setTheme: (theme: Theme) => void
   onAuthenticated: (user: AuthUser) => void
 }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
+
+  const initialResetToken = typeof window === 'undefined'
+    ? ''
+    : new URLSearchParams(window.location.search).get('resetToken') ?? ''
+
+  const [mode, setMode] = useState<AuthMode>(initialResetToken ? 'reset' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [resetToken] = useState(initialResetToken)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+
+  function changeMode(next: AuthMode) {
+    setMode(next)
+    setError('')
+    setMessage('')
+    setPassword('')
+    setConfirmPassword('')
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
     setError('')
+    setMessage('')
 
     try {
+      if (mode === 'forgot') {
+        const response = await requestPasswordReset(email)
+        setMessage(response.message)
+        return
+      }
+
+      if (mode === 'reset') {
+        if (!resetToken) throw new Error('Link de redefinição inválido.')
+        if (password !== confirmPassword) throw new Error('As senhas não coincidem.')
+
+        await resetPassword(resetToken, password)
+        window.history.replaceState({}, '', window.location.pathname)
+        setMessage('Senha redefinida com sucesso. Entre com sua nova senha.')
+        setMode('login')
+        setPassword('')
+        setConfirmPassword('')
+        return
+      }
+
       const response = mode === 'login'
         ? await login(email, password)
         : await register(name, email, password)
 
       onAuthenticated(response.user)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível autenticar.')
+      setError(e instanceof Error ? e.message : 'Não foi possível concluir a operação.')
     } finally {
       setBusy(false)
     }
   }
+
+  const recovery = mode === 'forgot' || mode === 'reset'
 
   return (
     <div className="auth-shell">
@@ -969,28 +1010,54 @@ function AuthScreen({
       <section className="auth-card">
         <div className="auth-intro">
           <span className="pill">AWS Learning Platform</span>
-          <h1>Estude. Pratique. Evolua.</h1>
-          <p>Simulados, métricas pessoais e revisão orientada para sua preparação em certificações AWS.</p>
+          <h1>{recovery ? 'Recupere seu acesso.' : 'Estude. Pratique. Evolua.'}</h1>
+          <p>{recovery
+            ? 'Use um link temporário e de uso único para definir uma nova senha com segurança.'
+            : 'Simulados, métricas pessoais e revisão orientada para sua preparação em certificações AWS.'}</p>
         </div>
 
         <form onSubmit={submit}>
-          <div className="auth-tabs">
-            <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => {setMode('login'); setError('')}}>Entrar</button>
-            <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => {setMode('register'); setError('')}}>Criar conta</button>
-          </div>
+          {!recovery && (
+            <div className="auth-tabs">
+              <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => changeMode('login')}>Entrar</button>
+              <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => changeMode('register')}>Criar conta</button>
+            </div>
+          )}
 
           {mode === 'register' && (
             <label>Nome<input value={name} onChange={event => setName(event.target.value)} minLength={2} required placeholder="Seu nome"/></label>
           )}
 
-          <label>E-mail<input value={email} onChange={event => setEmail(event.target.value)} type="email" required placeholder="voce@email.com"/></label>
-          <label>Senha<input value={password} onChange={event => setPassword(event.target.value)} type="password" minLength={8} required placeholder="Mínimo de 8 caracteres"/></label>
+          {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+            <label>E-mail<input value={email} onChange={event => setEmail(event.target.value)} type="email" required placeholder="voce@email.com"/></label>
+          )}
+
+          {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+            <label>{mode === 'reset' ? 'Nova senha' : 'Senha'}<input value={password} onChange={event => setPassword(event.target.value)} type="password" minLength={8} required placeholder="Mínimo de 8 caracteres"/></label>
+          )}
+
+          {mode === 'reset' && (
+            <label>Confirmar nova senha<input value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} type="password" minLength={8} required placeholder="Digite novamente"/></label>
+          )}
+
+          {mode === 'login' && (
+            <button type="button" className="auth-link" onClick={() => changeMode('forgot')}>Esqueci minha senha</button>
+          )}
 
           {error && <div className="auth-error">{error}</div>}
+          {message && <div className="auth-success">{message}</div>}
 
           <button className="primary auth-submit" disabled={busy}>
-            {busy ? 'Processando...' : mode === 'login' ? 'Entrar no SisAWS' : 'Criar minha conta'}
+            {busy ? 'Processando...' :
+              mode === 'login' ? 'Entrar no SisAWS' :
+              mode === 'register' ? 'Criar minha conta' :
+              mode === 'forgot' ? 'Enviar link de recuperação' :
+              'Definir nova senha'}
           </button>
+
+          {recovery && (
+            <button type="button" className="auth-link auth-back" onClick={() => changeMode('login')}>Voltar para o login</button>
+          )}
 
           <p className="auth-note">Projeto educacional independente. Não afiliado ou endossado pela Amazon Web Services.</p>
         </form>

@@ -107,3 +107,20 @@ variable "rds_free_storage_alarm_gib" {
   type        = number
   default     = 5
 }
+
+variable "password_reset_from_email" {
+  description = "Verified Amazon SES sender used for SisAWS password reset emails. Leave empty to disable email delivery."
+  type        = string
+  default     = ""
+}
+
+variable "password_reset_ttl_minutes" {
+  description = "Lifetime of a password reset token in minutes."
+  type        = number
+  default     = 15
+
+  validation {
+    condition     = var.password_reset_ttl_minutes >= 5 && var.password_reset_ttl_minutes <= 60
+    error_message = "password_reset_ttl_minutes must be between 5 and 60."
+  }
+}

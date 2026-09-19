@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -26,6 +28,21 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return response(authService.login(request.email(), request.password()));
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(org.springframework.http.HttpStatus.ACCEPTED)
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.email());
+        return new MessageResponse(
+                "Se existir uma conta com este e-mail, enviaremos um link temporário para redefinir a senha."
+        );
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
     }
 
     @GetMapping("/me")
@@ -51,6 +68,17 @@ public class AuthController {
             @NotBlank @Email String email,
             @NotBlank String password
     ) {}
+
+    public record ForgotPasswordRequest(
+            @NotBlank @Email String email
+    ) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank String token,
+            @NotBlank @Size(min = 8, max = 72) String newPassword
+    ) {}
+
+    public record MessageResponse(String message) {}
 
     public record UserResponse(Long id, String name, String email, String role) {}
     public record AuthResponse(String token, UserResponse user) {}

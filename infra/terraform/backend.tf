@@ -222,6 +222,22 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "SISAWS_CORS_ALLOWED_ORIGINS"
         value = local.frontend_origin
+      },
+      {
+        name  = "AWS_REGION"
+        value = var.aws_region
+      },
+      {
+        name  = "SISAWS_PASSWORD_RESET_TTL_MINUTES"
+        value = tostring(var.password_reset_ttl_minutes)
+      },
+      {
+        name  = "SISAWS_PASSWORD_RESET_FROM_EMAIL"
+        value = var.password_reset_from_email
+      },
+      {
+        name  = "SISAWS_PASSWORD_RESET_BASE_URL"
+        value = local.frontend_origin
       }
     ]
 
@@ -277,6 +293,7 @@ resource "aws_ecs_service" "backend" {
   depends_on = [
     aws_lb_listener.api,
     aws_iam_role_policy_attachment.ecs_execution,
-    aws_iam_role_policy.ecs_execution_secrets
+    aws_iam_role_policy.ecs_execution_secrets,
+    aws_iam_role_policy.ecs_task_ses
   ]
 }

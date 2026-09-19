@@ -458,3 +458,10 @@ h1{margin:4px 0 0;font-size:clamp(27px,3vw,38px);line-height:1.08}
   .setup-card{max-height:none;overflow:visible}
   .setup-start{position:static;box-shadow:none}
 }
+
+
+/* v2.1 - Password recovery */
+.auth-link{border:0;background:transparent;color:var(--blue);font-size:12px;font-weight:800;padding:0;cursor:pointer;justify-self:start}
+.auth-link:hover{text-decoration:underline}
+.auth-back{justify-self:center;margin-top:-2px}
+.auth-success{border:1px solid color-mix(in srgb,var(--success) 42%,var(--border));background:color-mix(in srgb,var(--success) 10%,var(--surface));color:var(--success);padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.45}

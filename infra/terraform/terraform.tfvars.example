@@ -25,3 +25,7 @@ ecs_cpu_alarm_threshold    = 75
 ecs_memory_alarm_threshold = 80
 rds_cpu_alarm_threshold    = 80
 rds_free_storage_alarm_gib = 5
+
+# Password recovery (Amazon SES)
+password_reset_from_email = ""
+password_reset_ttl_minutes = 15

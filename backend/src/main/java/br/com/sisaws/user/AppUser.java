@@ -54,6 +54,10 @@ public class AppUser implements UserDetails {
     public Role getRole() { return role; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
