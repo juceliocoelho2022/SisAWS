@@ -11,6 +11,9 @@ Plataforma full stack para estudos, simulados e evolução técnica em certifica
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F59E0B)
 ![CI](https://github.com/juceliocoelho2022/SisAWS/actions/workflows/ci.yml/badge.svg)
 
+
+> **Engineering decisions & trade-offs:** [docs/engineering-decisions.md](docs/engineering-decisions.md) — contexto, alternativas consideradas, custos das escolhas, estratégia de testes e diagnóstico operacional.
+
 ## Visão geral
 
 O **SisAWS** foi criado para transformar o estudo de AWS em uma experiência prática, mensurável e evolutiva.
